@@ -1,0 +1,27 @@
+{
+  "name": "rxjs-postgres",
+  "version": "0.0.1",
+  "description": "RxJs decorator for node-postgres",
+  "main": "dist/index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "mocha tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/ghettovoice/rxjs-postgres.git"
+  },
+  "keywords": [
+    "rxjs",
+    "postgres",
+    "pg"
+  ],
+  "author": "Vladimir Vershinin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://gitlab.com/ghettovoice/rxjs-postgres/issues"
+  },
+  "homepage": "https://gitlab.com/ghettovoice/rxjs-postgres#README"
+}
