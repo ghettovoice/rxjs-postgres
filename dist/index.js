@@ -10,6 +10,6 @@
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-__export(require("./RxPool"));
-__export(require("./RxClient"));
-//# sourceMappingURL=index.js.map
+__export(require('./rxpool'));
+__export(require('./rxclient'));
+__export(require('./errors'));
