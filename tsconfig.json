@@ -1,13 +1,10 @@
 {
-  "compileOnSave": false,
+  "compileOnSave": true,
   "compilerOptions": {
     "target": "es5",
     "sourceMap": true,
-    "jsx": "preserve",
     "outDir": "dist/",
-    "noImplicitAny": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "noImplicitAny": true
   },
   "files": [
     "src/index.ts"
