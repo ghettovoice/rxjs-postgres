@@ -4,7 +4,7 @@ var Rx = require("rx");
 var rxclient_1 = require("./rxclient");
 var errors_1 = require("../errors");
 /**
- * Standalone RxJs decorator for `pg.Pool`.
+ * Standalone RxJs adapter for `pg.Pool`.
  */
 var RxPool = (function () {
     /**
@@ -30,6 +30,13 @@ var RxPool = (function () {
     Object.defineProperty(RxPool.prototype, "tclient", {
         get: function () {
             return this._tclient;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(RxPool.prototype, "isDisposed", {
+        get: function () {
+            return this._disposed;
         },
         enumerable: true,
         configurable: true

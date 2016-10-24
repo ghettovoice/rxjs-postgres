@@ -1,5 +1,5 @@
 /**
- * RxJs ES decorators.
+ * Standalone RxJs adapters for `node-postgres`.
  *
  * @package rxjs-postgres
  * @author Vladimir Vershinin

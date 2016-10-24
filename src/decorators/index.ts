@@ -1,5 +1,5 @@
 /**
- * RxJs Postgres standalone decorators.
+ * RxJs ES decorators.
  *
  * @package rxjs-postgres
  * @author Vladimir Vershinin

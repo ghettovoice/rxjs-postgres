@@ -3,7 +3,7 @@ function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 /**
- * RxJs Postgres standalone decorators.
+ * Standalone RxJs adapters for `node-postgres`.
  *
  * @package rxjs-postgres
  * @author Vladimir Vershinin

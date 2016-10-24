@@ -7,7 +7,7 @@ var util = require("../util");
 var connect = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.connect);
 var end = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.end);
 /**
- * Standalone RxJs decorator for `pg.Client`.
+ * Standalone RxJs adapter for `pg.Client`.
  */
 var RxClient = (function () {
     /**
@@ -35,7 +35,7 @@ var RxClient = (function () {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(RxClient.prototype, "disposed", {
+    Object.defineProperty(RxClient.prototype, "isDisposed", {
         get: function () {
             return this._disposed;
         },

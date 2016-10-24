@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "mocha tests"
+    "test": "mocha dist/tests/**/*"
   },
   "repository": {
     "type": "git",
@@ -25,6 +25,9 @@
   },
   "homepage": "https://gitlab.com/ghettovoice/rxjs-postgres#README",
   "devDependencies": {
+    "@types/chai": "^3.4.34",
+    "@types/mocha": "^2.2.32",
+    "@types/sinon": "^1.16.31",
     "chai": "^3.5.0",
     "mocha": "^3.1.2",
     "sinon": "^1.17.6",

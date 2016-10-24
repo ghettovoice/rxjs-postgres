@@ -1,4 +1,4 @@
-///<reference path="../types.d.ts"/>
+///<reference path="./types.d.ts"/>
 /**
  * RxJs Postgres decorator.
  *
@@ -8,5 +8,5 @@
  * @copyright (c) 2016, Vladimir Vershinin
  */
 
-export * from './decorators';
+export * from './adapters';
 export * from './errors';

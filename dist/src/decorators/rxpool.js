@@ -1,6 +1,6 @@
 "use strict";
 /**
- * Reactive ES Decorator for `pg.Client`.
+ * RxJs decorator for `pg.Client`.
  */
 function RxPool(options) {
     return function (Pool) {
