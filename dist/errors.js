@@ -12,6 +12,9 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+/**
+ * Error class for all client specific exceptions.
+ */
 var RxClientError = (function (_super) {
     __extends(RxClientError, _super);
     function RxClientError() {
@@ -21,6 +24,9 @@ var RxClientError = (function (_super) {
     return RxClientError;
 }(Error));
 exports.RxClientError = RxClientError;
+/**
+ * Error class for all pool specific exceptions.
+ */
 var RxPoolError = (function (_super) {
     __extends(RxPoolError, _super);
     function RxPoolError() {

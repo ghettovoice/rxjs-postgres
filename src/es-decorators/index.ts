@@ -1,12 +1,10 @@
-///<reference path="../types.d.ts"/>
 /**
- * RxJs Postgres decorator.
+ * RxJs ES decorators.
  *
  * @package rxjs-postgres
  * @author Vladimir Vershinin
  * @license MIT
  * @copyright (c) 2016, Vladimir Vershinin
  */
-
-export * from './decorators';
-export * from './errors';
+export * from './rxpool';
+export * from './rxclient';

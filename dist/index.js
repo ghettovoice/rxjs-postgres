@@ -1,3 +1,4 @@
+///<reference path="../types.d.ts"/>
 /**
  * RxJs Postgres decorator.
  *
@@ -10,6 +11,4 @@
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-__export(require('./rxpool'));
-__export(require('./rxclient'));
 __export(require('./errors'));

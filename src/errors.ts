@@ -7,10 +7,16 @@
  * @copyright (c) 2016, Vladimir Vershinin
  */
 
+/**
+ * Error class for all client specific exceptions.
+ */
 export class RxClientError extends Error {
     public name : string = 'RxClientError';
 }
 
+/**
+ * Error class for all pool specific exceptions.
+ */
 export class RxPoolError extends Error {
     public name : string = 'RxPoolError';
 }
