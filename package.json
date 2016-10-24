@@ -34,11 +34,9 @@
     "typescript": "^2.0.3"
   },
   "dependencies": {
-    "@types/es6-shim": "^0.31.32",
     "@types/node": "^6.0.45",
     "@types/pg": "^6.1.33",
     "@types/pg-pool": "0.0.2",
-    "@types/rx": "^2.5.33",
     "pg": "^6.1.0",
     "pg-pool": "^1.5.0",
     "rx": "^4.1.0"

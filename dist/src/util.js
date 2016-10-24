@@ -7,12 +7,8 @@
  * @param {...*} [args]
  * @return {T}
  */
-function call(fn, context) {
-    var args = [];
-    for (var _i = 2; _i < arguments.length; _i++) {
-        args[_i - 2] = arguments[_i];
-    }
-    return fn.call.apply(fn, [context].concat(args));
+function call(fn, context, ...args) {
+    return fn.call(context, ...args);
 }
 exports.call = call;
 /**

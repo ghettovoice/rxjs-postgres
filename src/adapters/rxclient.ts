@@ -41,7 +41,7 @@ export default class RxClient implements Rx.Disposable {
     }
 
     release() : void {
-        this._client.release();
+        typeof this._client.release === 'function' && this._client.release();
     }
 
     dispose() : void {
