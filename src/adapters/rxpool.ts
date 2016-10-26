@@ -86,7 +86,7 @@ export default class RxPool implements Rx.Disposable {
     }
 
     /**
-     * @return {Observable<RxClient>}
+     * @return {Rx.Observable<RxClient>}
      */
     begin() : Rx.Observable<RxClient> {
         const observable = this._tclient ?

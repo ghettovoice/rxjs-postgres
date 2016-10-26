@@ -1,18 +1,13 @@
 "use strict";
 const assert = require("assert");
-const pg_1 = require("pg");
 const Rx = require("rx");
 const errors_1 = require("../errors");
-const util = require("../util");
-const connect = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.connect);
-const query = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.query);
-const end = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.end);
 /**
  * Standalone RxJs adapter for `pg.Client`.
  */
 class RxClient {
     /**
-     * @param {Client} client
+     * @param {PgClient | Client} client
      */
     constructor(client) {
         if (!(this instanceof RxClient)) {
@@ -23,7 +18,7 @@ class RxClient {
         this._disposed = false;
     }
     get client() {
-        return (this._client);
+        return this._client;
     }
     get tlevel() {
         return this._tlevel;
@@ -41,18 +36,18 @@ class RxClient {
         }
     }
     /**
-     * @return {Observable<RxClient>}
+     * @return {Rx.Observable<RxClient>}
      */
     connect() {
-        return util.call(connect, this._client)
-            .map(() => this);
+        const connect = Rx.Observable.fromNodeCallback(this._client.connect, this._client);
+        return connect().map((client) => this);
     }
     /**
-     * @return {Observable<RxClient>}
+     * @return {Rx.Observable<RxClient>}
      */
     end() {
-        return util.call(end, this._client)
-            .map(() => this);
+        const end = Rx.Observable.fromNodeCallback(this._client.end, this._client);
+        return end().map(() => this);
     }
     /**
      * @param {string} queryText
@@ -60,7 +55,8 @@ class RxClient {
      * @return {Rx.Observable<ResultSet>}
      */
     query(queryText, values) {
-        return util.call(query, this._client, queryText, values);
+        const query = Rx.Observable.fromNodeCallback(this._client.query, this._client);
+        return query(queryText, values);
     }
     /**
      * @return {Rx.Observable<RxClient>}
@@ -72,7 +68,7 @@ class RxClient {
         if (this._tlevel === 0) {
             query = 'begin';
         }
-        else if (this._tlevel > 1) {
+        else if (this._tlevel > 0) {
             query = `savepoint point_${this._tlevel}`;
         }
         return this.query(query)

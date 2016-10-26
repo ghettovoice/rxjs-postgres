@@ -1,4 +1,6 @@
-import { PgClient, PgQuery, PgResult } from "../../src/pg";
+import { PgClient, PgQuery, PgQueryResult } from "../../src/pg";
+import { Query } from "pg";
+import { ResultSet } from "pg";
 /**
  * node-postgres mocks
  */
@@ -30,23 +32,20 @@ export class ClientMock implements PgClient {
         }, 100);
     }
 
-    query(queryText : string, values : any[], callback? : (err? : Error, res? : PgResult) => void) : PgQuery {
+    query(queryText : string, values : any[], callback? : (err? : Error, res? : PgQueryResult | ResultSet) => void) : PgQuery | Query {
         if (!this.connected) {
             throw new Error('Not connected');
         }
 
+        this.queries.push({
+            query: queryText,
+            args: values
+        });
+
         setTimeout(() => {
-            const res : any = {
+            callback(undefined, {
                 rows: [],
-            };
-
-            this.queries.push({
-                queryText,
-                values,
-                res
             });
-
-            callback(undefined, res);
         }, 100);
 
         return new QueryMock({

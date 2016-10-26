@@ -69,7 +69,7 @@ class RxPool {
         return util.call(query, this._pool, queryText, values);
     }
     /**
-     * @return {Observable<RxClient>}
+     * @return {Rx.Observable<RxClient>}
      */
     begin() {
         const observable = this._tclient ?

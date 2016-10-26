@@ -5,10 +5,6 @@ import { RxClientError } from "../errors";
 import * as util from "../util";
 import { PgClient } from "../pg";
 
-const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Client.prototype.connect);
-const query : () => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(Client.prototype.query);
-const end : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Client.prototype.end);
-
 /**
  * Standalone RxJs adapter for `pg.Client`.
  */
@@ -18,9 +14,9 @@ export default class RxClient implements Rx.Disposable {
     private _disposed : boolean;
 
     /**
-     * @param {Client} client
+     * @param {PgClient | Client} client
      */
-    constructor(client : Client | PgClient) {
+    constructor(client : PgClient | Client) {
         if (!(this instanceof RxClient)) {
             return new RxClient(client);
         }
@@ -30,8 +26,8 @@ export default class RxClient implements Rx.Disposable {
         this._disposed = false;
     }
 
-    get client() : Client {
-        return <Client>(this._client);
+    get client() : PgClient {
+        return this._client;
     }
 
     get tlevel() : number {
@@ -54,19 +50,21 @@ export default class RxClient implements Rx.Disposable {
     }
 
     /**
-     * @return {Observable<RxClient>}
+     * @return {Rx.Observable<RxClient>}
      */
     connect() : Rx.Observable<RxClient> {
-        return util.call<Rx.Observable<Client>>(connect, this._client)
-            .map<RxClient>(() => this);
+        const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(this._client.connect, this._client);
+
+        return connect().map((client : Client) => this);
     }
 
     /**
-     * @return {Observable<RxClient>}
+     * @return {Rx.Observable<RxClient>}
      */
     end() : Rx.Observable<RxClient> {
-        return util.call<Rx.Observable<Client>>(end, this._client)
-            .map<RxClient>(() => this);
+        const end : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(this._client.end, this._client);
+
+        return end().map<RxClient>(() => this);
     }
 
     /**
@@ -75,7 +73,9 @@ export default class RxClient implements Rx.Disposable {
      * @return {Rx.Observable<ResultSet>}
      */
     query(queryText : string, values? : any[]) : Rx.Observable<ResultSet> {
-        return util.call<Rx.Observable<ResultSet>>(query, this._client, queryText, values);
+        const query : (queryText : string, values? : any[]) => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(this._client.query, this._client);
+
+        return query(queryText, values);
     }
 
     /**
@@ -89,7 +89,7 @@ export default class RxClient implements Rx.Disposable {
 
         if (this._tlevel === 0) {
             query = 'begin';
-        } else if (this._tlevel > 1) {
+        } else if (this._tlevel > 0) {
             query = `savepoint point_${this._tlevel}`;
         }
 

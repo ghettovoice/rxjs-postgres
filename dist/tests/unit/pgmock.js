@@ -27,16 +27,14 @@ class ClientMock {
         if (!this.connected) {
             throw new Error('Not connected');
         }
+        this.queries.push({
+            query: queryText,
+            args: values
+        });
         setTimeout(() => {
-            const res = {
+            callback(undefined, {
                 rows: [],
-            };
-            this.queries.push({
-                queryText,
-                values,
-                res
             });
-            callback(undefined, res);
         }, 100);
         return new QueryMock({
             text: queryText
