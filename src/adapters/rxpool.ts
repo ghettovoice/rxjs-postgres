@@ -1,9 +1,14 @@
+import Pool = require("pg-pool");
 import * as assert from "assert";
-import { Pool } from "pg-pool";
-import { Client, QueryResult } from "pg";
+import { Client, ResultSet } from "pg";
 import * as Rx from "rx";
 import RxClient from "./rxclient";
 import { RxPoolError } from "../errors";
+import * as util from '../util';
+
+const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Pool.prototype.connect);
+const query : () => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(Pool.prototype.query);
+const end : () => Rx.Observable<void> = Rx.Observable.fromNodeCallback<void>(Pool.prototype.end);
 
 /**
  * Standalone RxJs adapter for `pg.Pool`.
@@ -52,7 +57,7 @@ export default class RxPool implements Rx.Disposable {
      * @return {Rx.Observable<RxClient>}
      */
     connect() : Rx.Observable<RxClient> {
-        return Rx.Observable.fromPromise<Client>(this._pool.connect())
+        return util.call<Rx.Observable<Client>>(connect, this._pool)
             .map<RxClient>((client : Client) => new RxClient(client));
     }
 
@@ -67,18 +72,17 @@ export default class RxPool implements Rx.Disposable {
      * @return {Rx.Observable<RxPool>}
      */
     end() : Rx.Observable<RxPool> {
-        return Rx.Observable.fromPromise<void>(this._pool.end())
+        return util.call<Rx.Observable<void>>(end, this._pool)
             .map<RxPool>(() => this);
     }
 
     /**
      * @param {string} queryText
      * @param {Array} [values]
-     * @return {Rx.Observable<QueryResult>}
+     * @return {Rx.Observable<ResultSet>}
      */
-    query(queryText : string, values? : any[]) : Rx.Observable<QueryResult> {
-        return this.connect()
-            .flatMap<QueryResult>((client : RxClient) => client.query(queryText, values));
+    query(queryText : string, values? : any[]) : Rx.Observable<ResultSet> {
+        return util.call<Rx.Observable<ResultSet>>(query, this._pool, queryText, values);
     }
 
     /**

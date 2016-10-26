@@ -1,79 +1,56 @@
 import { setTimeout } from "timers";
-import { QueryResult } from 'pg';
+import { ResultSet } from "pg";
 /**
  * node-postgres mocks
  */
 
 export class ClientMock {
-    public user : string;
-    public database : string;
-    public port : number;
-    public host : string;
-    public password : string;
-
     public connected : boolean = false;
     public queries : any[] = [];
 
-    constructor(config : any = {}) {
-        this.user = config.user;
-        this.database = config.database;
-        this.port = config.port;
-        this.host = config.host;
-        this.password = config.password;
+    constructor(config? : any) {
+
     }
 
     connect(callback? : (err? : Error, inst? : ClientMock) => void) : void {
+        if (this.connected) {
+            callback(undefined, this);
+        }
+
         setTimeout(() => {
             this.connected = true;
-            callback(null, this);
+            callback(undefined, this);
         }, 100);
     }
 
-    end(callback? : (...args: any[]) => void) : void {
+    end(callback? : () => void) : void {
         setTimeout(() => {
             this.queries = [];
+            this.connected = false;
             callback();
         }, 100);
     }
 
-    query(queryText : string, values? : any[]) : Promise<QueryResult> {
-        return new Promise<QueryResult>((resolve: Function, reject: Function) => {
+    query(query : string, values? : any[]) : Promise<ResultSet> {
+        return new Promise<ResultSet>((resolve: Function, reject: Function) => {
             if (!this.connected) {
                 return reject(new Error('Not connected'));
             }
 
-            const res = <QueryResult>{
-                command: queryText,
+            const res = <ResultSet>{
+                command: query,
                 rowCount: 0,
                 oid: 1,
                 rows: [],
             };
 
             this.queries.push({
-                queryText,
+                query,
                 values,
                 res
             });
 
             resolve(res);
         });
-    }
-}
-
-export class PoolMock {
-    constructor(config : any = {}) {
-
-    }
-
-    connect() : Promise<ClientMock> {
-        return Promise.resolve(new ClientMock('qwerty@localhost:4632/qwerty'));
-    }
-
-    end() : Promise<void> {
-        return Promise.resolve(undefined);
-    }
-
-    query(queryText : string, values? : any[]) : Promise<{}> {
-        return Promise.resolve({});
     }
 }

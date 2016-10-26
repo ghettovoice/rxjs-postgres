@@ -5,6 +5,7 @@ const Rx = require("rx");
 const errors_1 = require("../errors");
 const util = require("../util");
 const connect = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.connect);
+const query = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.query);
 const end = Rx.Observable.fromNodeCallback(pg_1.Client.prototype.end);
 /**
  * Standalone RxJs adapter for `pg.Client`.
@@ -54,12 +55,12 @@ class RxClient {
             .map(() => this);
     }
     /**
-     * @param {string} query
+     * @param {string} queryText
      * @param {Array} [values]
-     * @return {Rx.Observable<QueryResult>}
+     * @return {Rx.Observable<ResultSet>}
      */
-    query(query, values) {
-        return Rx.Observable.fromPromise(this._client.query(query, values));
+    query(queryText, values) {
+        return util.call(query, this._client, queryText, values);
     }
     /**
      * @return {Rx.Observable<RxClient>}

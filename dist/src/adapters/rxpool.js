@@ -1,8 +1,13 @@
 "use strict";
+const Pool = require("pg-pool");
 const assert = require("assert");
 const Rx = require("rx");
 const rxclient_1 = require("./rxclient");
 const errors_1 = require("../errors");
+const util = require('../util');
+const connect = Rx.Observable.fromNodeCallback(Pool.prototype.connect);
+const query = Rx.Observable.fromNodeCallback(Pool.prototype.query);
+const end = Rx.Observable.fromNodeCallback(Pool.prototype.end);
 /**
  * Standalone RxJs adapter for `pg.Pool`.
  */
@@ -39,7 +44,7 @@ class RxPool {
      * @return {Rx.Observable<RxClient>}
      */
     connect() {
-        return Rx.Observable.fromPromise(this._pool.connect())
+        return util.call(connect, this._pool)
             .map((client) => new rxclient_1.default(client));
     }
     /**
@@ -52,17 +57,16 @@ class RxPool {
      * @return {Rx.Observable<RxPool>}
      */
     end() {
-        return Rx.Observable.fromPromise(this._pool.end())
+        return util.call(end, this._pool)
             .map(() => this);
     }
     /**
      * @param {string} queryText
      * @param {Array} [values]
-     * @return {Rx.Observable<QueryResult>}
+     * @return {Rx.Observable<ResultSet>}
      */
     query(queryText, values) {
-        return this.connect()
-            .flatMap((client) => client.query(queryText, values));
+        return util.call(query, this._pool, queryText, values);
     }
     /**
      * @return {Observable<RxClient>}

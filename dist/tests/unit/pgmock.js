@@ -4,40 +4,39 @@ const timers_1 = require("timers");
  * node-postgres mocks
  */
 class ClientMock {
-    constructor(config = {}) {
+    constructor(config) {
         this.connected = false;
         this.queries = [];
-        this.user = config.user;
-        this.database = config.database;
-        this.port = config.port;
-        this.host = config.host;
-        this.password = config.password;
     }
     connect(callback) {
+        if (this.connected) {
+            callback(undefined, this);
+        }
         timers_1.setTimeout(() => {
             this.connected = true;
-            callback(null, this);
+            callback(undefined, this);
         }, 100);
     }
     end(callback) {
         timers_1.setTimeout(() => {
             this.queries = [];
+            this.connected = false;
             callback();
         }, 100);
     }
-    query(queryText, values) {
+    query(query, values) {
         return new Promise((resolve, reject) => {
             if (!this.connected) {
                 return reject(new Error('Not connected'));
             }
             const res = {
-                command: queryText,
+                command: query,
                 rowCount: 0,
                 oid: 1,
                 rows: [],
             };
             this.queries.push({
-                queryText,
+                query,
                 values,
                 res
             });
@@ -46,17 +45,3 @@ class ClientMock {
     }
 }
 exports.ClientMock = ClientMock;
-class PoolMock {
-    constructor(config = {}) {
-    }
-    connect() {
-        return Promise.resolve(new ClientMock('qwerty@localhost:4632/qwerty'));
-    }
-    end() {
-        return Promise.resolve(undefined);
-    }
-    query(queryText, values) {
-        return Promise.resolve({});
-    }
-}
-exports.PoolMock = PoolMock;

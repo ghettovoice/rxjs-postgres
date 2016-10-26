@@ -1,24 +1,29 @@
 import * as assert from "assert";
-import { Client, QueryResult } from "pg";
+import { Client, ResultSet } from "pg";
 import * as Rx from "rx";
 import { RxClientError } from "../errors";
 import * as util from "../util";
 
 const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Client.prototype.connect);
+const query : () => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(Client.prototype.query);
 const end : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Client.prototype.end);
+
+export declare interface ReleasableClient extends Client {
+    release? : () => void;
+}
 
 /**
  * Standalone RxJs adapter for `pg.Client`.
  */
 export default class RxClient implements Rx.Disposable {
-    private _client : Client;
+    private _client : ReleasableClient;
     private _tlevel : number;
     private _disposed : boolean;
 
     /**
      * @param {Client} client
      */
-    constructor(client : Client) {
+    constructor(client : Client | ReleasableClient) {
         if (!(this instanceof RxClient)) {
             return new RxClient(client);
         }
@@ -68,12 +73,12 @@ export default class RxClient implements Rx.Disposable {
     }
 
     /**
-     * @param {string} query
+     * @param {string} queryText
      * @param {Array} [values]
-     * @return {Rx.Observable<QueryResult>}
+     * @return {Rx.Observable<ResultSet>}
      */
-    query(query : string, values? : any[]) : Rx.Observable<QueryResult> {
-        return Rx.Observable.fromPromise<QueryResult>(this._client.query(query, values));
+    query(queryText : string, values? : any[]) : Rx.Observable<ResultSet> {
+        return util.call<Rx.Observable<ResultSet>>(query, this._client, queryText, values);
     }
 
     /**
