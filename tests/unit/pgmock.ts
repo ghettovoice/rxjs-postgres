@@ -1,10 +1,9 @@
-import { setTimeout } from "timers";
-import { ResultSet } from "pg";
+import { PgClient, PgQuery, PgResult } from "../../src/pg";
 /**
  * node-postgres mocks
  */
 
-export class ClientMock {
+export class ClientMock implements PgClient {
     public connected : boolean = false;
     public queries : any[] = [];
 
@@ -12,9 +11,9 @@ export class ClientMock {
 
     }
 
-    connect(callback? : (err? : Error, inst? : ClientMock) => void) : void {
+    connect(callback? : (err? : Error, res? : PgClient) => void) : void {
         if (this.connected) {
-            callback(undefined, this);
+            return;
         }
 
         setTimeout(() => {
@@ -31,26 +30,35 @@ export class ClientMock {
         }, 100);
     }
 
-    query(query : string, values? : any[]) : Promise<ResultSet> {
-        return new Promise<ResultSet>((resolve: Function, reject: Function) => {
-            if (!this.connected) {
-                return reject(new Error('Not connected'));
-            }
+    query(queryText : string, values : any[], callback? : (err? : Error, res? : PgResult) => void) : PgQuery {
+        if (!this.connected) {
+            throw new Error('Not connected');
+        }
 
-            const res = <ResultSet>{
-                command: query,
-                rowCount: 0,
-                oid: 1,
+        setTimeout(() => {
+            const res : any = {
                 rows: [],
             };
 
             this.queries.push({
-                query,
+                queryText,
                 values,
                 res
             });
 
-            resolve(res);
+            callback(undefined, res);
+        }, 100);
+
+        return new QueryMock({
+            text: queryText
         });
+    }
+}
+
+export class QueryMock implements PgQuery {
+    text : string;
+
+    constructor(config : any = {}) {
+        this.text = config.text;
     }
 }

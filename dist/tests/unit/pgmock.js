@@ -1,5 +1,4 @@
 "use strict";
-const timers_1 = require("timers");
 /**
  * node-postgres mocks
  */
@@ -10,38 +9,44 @@ class ClientMock {
     }
     connect(callback) {
         if (this.connected) {
-            callback(undefined, this);
+            return;
         }
-        timers_1.setTimeout(() => {
+        setTimeout(() => {
             this.connected = true;
             callback(undefined, this);
         }, 100);
     }
     end(callback) {
-        timers_1.setTimeout(() => {
+        setTimeout(() => {
             this.queries = [];
             this.connected = false;
             callback();
         }, 100);
     }
-    query(query, values) {
-        return new Promise((resolve, reject) => {
-            if (!this.connected) {
-                return reject(new Error('Not connected'));
-            }
+    query(queryText, values, callback) {
+        if (!this.connected) {
+            throw new Error('Not connected');
+        }
+        setTimeout(() => {
             const res = {
-                command: query,
-                rowCount: 0,
-                oid: 1,
                 rows: [],
             };
             this.queries.push({
-                query,
+                queryText,
                 values,
                 res
             });
-            resolve(res);
+            callback(undefined, res);
+        }, 100);
+        return new QueryMock({
+            text: queryText
         });
     }
 }
 exports.ClientMock = ClientMock;
+class QueryMock {
+    constructor(config = {}) {
+        this.text = config.text;
+    }
+}
+exports.QueryMock = QueryMock;

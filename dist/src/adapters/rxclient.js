@@ -23,7 +23,7 @@ class RxClient {
         this._disposed = false;
     }
     get client() {
-        return this._client;
+        return (this._client);
     }
     get tlevel() {
         return this._tlevel;

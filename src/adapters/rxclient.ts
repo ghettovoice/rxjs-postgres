@@ -3,27 +3,24 @@ import { Client, ResultSet } from "pg";
 import * as Rx from "rx";
 import { RxClientError } from "../errors";
 import * as util from "../util";
+import { PgClient } from "../pg";
 
 const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Client.prototype.connect);
 const query : () => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(Client.prototype.query);
 const end : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Client.prototype.end);
 
-export declare interface ReleasableClient extends Client {
-    release? : () => void;
-}
-
 /**
  * Standalone RxJs adapter for `pg.Client`.
  */
 export default class RxClient implements Rx.Disposable {
-    private _client : ReleasableClient;
+    private _client : PgClient;
     private _tlevel : number;
     private _disposed : boolean;
 
     /**
      * @param {Client} client
      */
-    constructor(client : Client | ReleasableClient) {
+    constructor(client : Client | PgClient) {
         if (!(this instanceof RxClient)) {
             return new RxClient(client);
         }
@@ -34,7 +31,7 @@ export default class RxClient implements Rx.Disposable {
     }
 
     get client() : Client {
-        return this._client;
+        return <Client>(this._client);
     }
 
     get tlevel() : number {
