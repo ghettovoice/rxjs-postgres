@@ -12,7 +12,7 @@ export default class RxClient implements Rx.Disposable {
      * @param {PgClient | Client} client
      */
     constructor(client: PgClient | Client);
-    readonly client: Client | PgClient;
+    readonly client: PgClient;
     readonly tlevel: number;
     readonly isDisposed: boolean;
     release(): void;

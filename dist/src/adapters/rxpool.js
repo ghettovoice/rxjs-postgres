@@ -1,7 +1,12 @@
 "use strict";
+var Pool = require("pg-pool");
 var assert = require("assert");
 var Rx = require("rx");
 var rxclient_1 = require("./rxclient");
+var util = require('../util');
+var connect = Rx.Observable.fromNodeCallback(Pool.prototype.connect);
+var query = Rx.Observable.fromNodeCallback(Pool.prototype.query);
+var end = Rx.Observable.fromNodeCallback(Pool.prototype.end);
 /**
  * Standalone RxJs adapter for `pg.Pool`.
  */
@@ -15,6 +20,7 @@ var RxPool = (function () {
             return new RxPool(pool);
         }
         this._pool = pool;
+        this._disposed = false;
     }
     Object.defineProperty(RxPool.prototype, "pool", {
         get: function () {
@@ -30,12 +36,25 @@ var RxPool = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(RxPool.prototype, "isDisposed", {
+        get: function () {
+            return this._disposed;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    RxPool.prototype.dispose = function () {
+        if (!this._disposed) {
+            // TODO Implement ! Where to nullify tclient?
+            this._disposed = true;
+        }
+    };
     /**
      * @return {Rx.Observable<RxClient>}
      */
     RxPool.prototype.connect = function () {
-        var connect = Rx.Observable.fromNodeCallback(this._pool.connect, this._pool);
-        return connect().map(function (client) { return new rxclient_1.default(client); });
+        return util.call(connect, this._pool)
+            .map(function (client) { return new rxclient_1.default(client); });
     };
     /**
      * @return {Rx.Observable<RxClient>}
@@ -48,8 +67,8 @@ var RxPool = (function () {
      */
     RxPool.prototype.end = function () {
         var _this = this;
-        var end = Rx.Observable.fromNodeCallback(this._pool.end, this._pool);
-        return end().map(function () { return _this; });
+        return util.call(end, this._pool)
+            .map(function () { return _this; });
     };
     /**
      * @param {string} queryText
@@ -57,8 +76,7 @@ var RxPool = (function () {
      * @return {Rx.Observable<ResultSet>}
      */
     RxPool.prototype.query = function (queryText, values) {
-        var query = Rx.Observable.fromNodeCallback(this._pool.query, this._pool);
-        return query(queryText, values);
+        return util.call(query, this._pool, queryText, values);
     };
     /**
      * @return {Rx.Observable<RxClient>}

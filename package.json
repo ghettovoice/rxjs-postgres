@@ -43,6 +43,7 @@
     "typings": "^1.4.0"
   },
   "dependencies": {
+    "@types/es6-shim": "^0.31.32",
     "@types/node": "^6.0.45",
     "pg": "^6.1.0",
     "pg-pool": "^1.5.0",
@@ -55,7 +56,7 @@
     "src",
     "types",
     "tsconfig.json",
-    "typings.json" 
+    "typings.json"
   ],
   "typings": "types/index"
 }

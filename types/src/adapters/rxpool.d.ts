@@ -1,21 +1,21 @@
-import { Client, ResultSet } from "pg";
+import Pool = require("pg-pool");
+import { ResultSet } from "pg";
 import * as Rx from "rx";
-import { PgClient } from "../pg";
+import RxClient from "./rxclient";
 /**
- * Standalone RxJs adapter for `pg.Client`.
+ * Standalone RxJs adapter for `pg.Pool`.
  */
-export default class RxClient implements Rx.Disposable {
-    private _client;
-    private _tlevel;
+export default class RxPool implements Rx.Disposable {
+    private _pool;
+    private _tclient;
     private _disposed;
     /**
-     * @param {PgClient | Client} client
+     * @param {Pool} pool
      */
-    constructor(client: PgClient | Client);
-    readonly client: Client | PgClient;
-    readonly tlevel: number;
+    constructor(pool: Pool);
+    readonly pool: Pool;
+    readonly tclient: RxClient;
     readonly isDisposed: boolean;
-    release(): void;
     dispose(): void;
     /**
      * @return {Rx.Observable<RxClient>}
@@ -24,7 +24,11 @@ export default class RxClient implements Rx.Disposable {
     /**
      * @return {Rx.Observable<RxClient>}
      */
-    end(): Rx.Observable<RxClient>;
+    take(): Rx.Observable<RxClient>;
+    /**
+     * @return {Rx.Observable<RxPool>}
+     */
+    end(): Rx.Observable<RxPool>;
     /**
      * @param {string} queryText
      * @param {Array} [values]
@@ -33,7 +37,6 @@ export default class RxClient implements Rx.Disposable {
     query(queryText: string, values?: any[]): Rx.Observable<ResultSet>;
     /**
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
      */
     begin(): Rx.Observable<RxClient>;
     /**

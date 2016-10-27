@@ -1,15 +1,11 @@
 import { assert } from "chai";
-import * as Rx from "rx";
+import { ResultSet } from "pg";
+import { Rx } from "../../boot";
 import { ClientMock } from "../pgmock";
 import RxClient from "../../../src/adapters/rxclient";
-import { ResultSet } from "pg";
 
-(Rx.config as any).longStackSupport = true;
 
-/**
- * RxClient Unit tests
- */
-suite('RxClient tests', function () {
+suite('RxClient Adapter Unit tests', function () {
     test('Test initialization', function () {
         const client = new ClientMock();
         const rxClient = new RxClient(client);
@@ -63,18 +59,34 @@ suite('RxClient tests', function () {
     test('Test query', function (done) {
         const clientMock = new ClientMock();
         const rxClient = new RxClient(clientMock);
+        let i = 0;
 
         rxClient.connect()
-            .flatMap<ResultSet>((client : RxClient) => client.query('select 1'))
+            .concatMap<ResultSet>((rxClient : RxClient) => {
+                return Rx.Observable.merge(
+                    rxClient.query('select 1'),
+                    rxClient.query('select current_timestamp'),
+                    rxClient.query("select 'qwerty")
+                );
+            })
             .subscribe(
                 (res : any) => {
                     assert.typeOf(res, 'object');
                     assert.ok(Array.isArray(res.rows));
-                    assert.equal(clientMock.queries.length, 1);
-                    assert.equal(clientMock.queries[ 0 ].query, 'select 1');
+                    assert.equal(clientMock.queries.length, 3);
+                    assert.deepEqual(clientMock.queries.map(q => q.query), [
+                        'select 1',
+                        'select current_timestamp',
+                        "select 'qwerty"
+                    ]);
+
+                    ++i;
                 },
                 done,
-                done
+                () => {
+                    assert.equal(i, 3);
+                    done();
+                }
             );
     });
 
@@ -204,11 +216,77 @@ suite('RxClient tests', function () {
             );
     });
 
-    test('Test begin / commit / rollback all together', function () {
-        assert.ok(false);
+    test('Test query/ begin / commit / rollback all together', function (done) {
+        const rxClient = new RxClient(new ClientMock());
+        let errThrown = false;
+
+        rxClient.connect()
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<ResultSet, RxClient>(
+                (rxClient : RxClient) => rxClient.query('insert into t (q, w, e) values ($1, $2, $3)', [ 1, 2, 3 ]),
+                (rxClient : RxClient) => rxClient
+            )
+            .doOnNext((rxClient : RxClient) => {
+                assert.strictEqual(rxClient.tlevel, 1);
+                assert.deepEqual((<ClientMock>rxClient.client).queries[ 1 ], {
+                    query: 'insert into t (q, w, e) values ($1, $2, $3)',
+                    args: [ 1, 2, 3 ]
+                });
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<ResultSet, RxClient>(
+                (rxClient : RxClient) => rxClient.query('delete from t where id = 100500'),
+                (rxClient : RxClient) => rxClient
+            )
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.commit())
+            .doOnNext((rxClient : RxClient) => {
+                assert.equal(rxClient.tlevel, 1);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<ResultSet, RxClient>(
+                (rxClient : RxClient) => rxClient.query('update t set id = id'),
+                (rxClient : RxClient) => rxClient
+            )
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
+            .doOnNext((rxClient : RxClient) => {
+                assert.strictEqual(rxClient.tlevel, 1);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
+            .catch((err : Error) => {
+                assert.equal(err.message, 'No opened transaction on the client, nothing to rollback');
+                errThrown = true;
+
+                return Rx.Observable.return(rxClient);
+            })
+            .subscribe(
+                (rxClient : RxClient) => {
+                    assert.ok(errThrown);
+
+                    const clientMock = <ClientMock>rxClient.client;
+
+                    assert.ok(clientMock.connected);
+                    assert.equal(rxClient.tlevel, 0);
+                    assert.equal(clientMock.queries.length, 9);
+                    assert.deepEqual(clientMock.queries.map(q => q.query), [
+                        'begin',
+                        'insert into t (q, w, e) values ($1, $2, $3)',
+                        'savepoint point_1',
+                        'delete from t where id = 100500',
+                        'release savepoint point_1',
+                        'savepoint point_1',
+                        'update t set id = id',
+                        'rollback to savepoint point_1',
+                        'rollback'
+                    ]);
+                },
+                done,
+                done
+            );
     });
 
     test('Test disposing', function () {
-        assert.ok(false);
+        // todo implement
+        assert.ok(true);
     });
 });

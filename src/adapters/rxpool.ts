@@ -3,39 +3,28 @@ import * as assert from "assert";
 import { Client, ResultSet } from "pg";
 import * as Rx from "rx";
 import RxClient from "./rxclient";
-import { RxPoolError } from "../errors";
-import * as util from '../util';
-
-const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(Pool.prototype.connect);
-const query : () => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(Pool.prototype.query);
-const end : () => Rx.Observable<void> = Rx.Observable.fromNodeCallback<void>(Pool.prototype.end);
+import { PgPool } from "../pg";
 
 /**
  * Standalone RxJs adapter for `pg.Pool`.
  */
-export default class RxPool implements Rx.Disposable {
-    private _pool : Pool;
+export default class RxPool {
+    private _pool : PgPool;
     private _tclient : RxClient;
-    private _disposed : boolean;
 
     /**
      * @param {Pool} pool
      */
-    constructor(pool : Pool) {
+    constructor(pool : Pool | PgPool) {
         /* istanbul ignore if */
         if (!(this instanceof RxPool)) {
             return new RxPool(pool);
         }
 
-        if (typeof pool.query !== 'function') {
-            throw new RxPoolError('First argument should be instance of Pool type from "pg-pool" package');
-        }
-
         this._pool = pool;
-        this._disposed = false;
     }
 
-    get pool() : Pool {
+    get pool() : Pool | PgPool {
         return this._pool;
     }
 
@@ -43,23 +32,13 @@ export default class RxPool implements Rx.Disposable {
         return this._tclient;
     }
 
-    get isDisposed() : boolean {
-        return this._disposed;
-    }
-
-    dispose() : void {
-        if (!this._disposed) {
-            // TODO Implement ! Where to nullify tclient?
-            this._disposed = true;
-        }
-    }
-
     /**
      * @return {Rx.Observable<RxClient>}
      */
     connect() : Rx.Observable<RxClient> {
-        return util.call<Rx.Observable<Client>>(connect, this._pool)
-            .map<RxClient>((client : Client) => new RxClient(client));
+        const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(this._pool.connect, this._pool);
+
+        return connect().map<RxClient>((client : Client) => new RxClient(client));
     }
 
     /**
@@ -73,8 +52,9 @@ export default class RxPool implements Rx.Disposable {
      * @return {Rx.Observable<RxPool>}
      */
     end() : Rx.Observable<RxPool> {
-        return util.call<Rx.Observable<void>>(end, this._pool)
-            .map<RxPool>(() => this);
+        const end : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(this._pool.end, this._pool);
+
+        return end().map<RxPool>(() => this);
     }
 
     /**
@@ -83,7 +63,9 @@ export default class RxPool implements Rx.Disposable {
      * @return {Rx.Observable<ResultSet>}
      */
     query(queryText : string, values? : any[]) : Rx.Observable<ResultSet> {
-        return util.call<Rx.Observable<ResultSet>>(query, this._pool, queryText, values);
+        const query : (queryText : string, values? : any[]) => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(this._pool.query, this._pool);
+
+        return query(queryText, values);
     }
 
     /**

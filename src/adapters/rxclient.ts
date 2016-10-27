@@ -2,7 +2,6 @@ import * as assert from "assert";
 import { Client, ResultSet } from "pg";
 import * as Rx from "rx";
 import { RxClientError } from "../errors";
-import * as util from "../util";
 import { PgClient } from "../pg";
 
 /**
@@ -27,7 +26,7 @@ export default class RxClient implements Rx.Disposable {
         this._disposed = false;
     }
 
-    get client() : PgClient {
+    get client() : Client | PgClient {
         return this._client;
     }
 
