@@ -7,8 +7,10 @@
     "noImplicitAny": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "newLine": "lf",
-    "pretty": true
+    "newLine": "LF",
+    "pretty": true,
+    "declaration": true,
+    "declarationDir": "types/"
   },
   "include": [
     "src/**/*",

@@ -47,5 +47,15 @@
     "pg": "^6.1.0",
     "pg-pool": "^1.5.0",
     "rx": "^4.1.0"
-  }
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist",
+    "src",
+    "types",
+    "tsconfig.json",
+    "typings.json" 
+  ],
+  "typings": "types/index"
 }
