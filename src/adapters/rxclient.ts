@@ -17,6 +17,7 @@ export default class RxClient implements Rx.Disposable {
      * @param {PgClient | Client} client
      */
     constructor(client : PgClient | Client) {
+        /* istanbul ignore if */
         if (!(this instanceof RxClient)) {
             return new RxClient(client);
         }

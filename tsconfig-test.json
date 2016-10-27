@@ -3,13 +3,14 @@
   "compilerOptions": {
     "target": "es5",
     "module": "commonjs",
-    "outDir": "dist/",
+    "outDir": "tests-compiled/",
+    "sourceMap": true,
     "noImplicitAny": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
   "include": [
-    "src/**/*",
+    "tests/**/*",
     "typings/index.d.ts"
   ]
 }

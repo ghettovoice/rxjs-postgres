@@ -22,6 +22,7 @@ export default class RxPool implements Rx.Disposable {
      * @param {Pool} pool
      */
     constructor(pool : Pool) {
+        /* istanbul ignore if */
         if (!(this instanceof RxPool)) {
             return new RxPool(pool);
         }

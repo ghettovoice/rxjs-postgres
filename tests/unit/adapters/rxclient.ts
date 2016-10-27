@@ -10,17 +10,17 @@ config.longStackSupport = true;
 /**
  * RxClient Unit tests
  */
-describe('RxClient tests', function () {
-    it('Test initialization', function () {
+suite('RxClient tests', function () {
+    test('Test initialization', function () {
         const client = new ClientMock();
-        const rxClient = new RxClient(client);
+        var rxClient = new RxClient(client);
 
         assert.strictEqual(rxClient.client, client);
         assert.equal(rxClient.tlevel, 0);
         assert.equal(rxClient.isDisposed, false);
     });
 
-    it('Test connect', function (done) {
+    test('Test connect', function (done) {
         const rxClient = new RxClient(new ClientMock());
 
         rxClient.connect()
@@ -28,14 +28,19 @@ describe('RxClient tests', function () {
                 (rxClient : any) => {
                     assert.instanceOf(rxClient, RxClient);
                     assert.instanceOf(rxClient.client, ClientMock);
-                    assert.ok(rxClient.client.connected);
+
+                    rxClient = <RxClient>rxClient;
+                    const clientMock = <ClientMock>rxClient.client;
+
+                    assert.ok(clientMock.connected);
+                    assert.equal(rxClient.tlevel, 0);
                 },
                 done,
                 done
             );
     });
 
-    it('Test end', function (done) {
+    test('Test end', function (done) {
         const rxClient = new RxClient(new ClientMock());
 
         rxClient.connect()
@@ -44,21 +49,26 @@ describe('RxClient tests', function () {
                 (rxClient : any) => {
                     assert.instanceOf(rxClient, RxClient);
                     assert.instanceOf(rxClient.client, ClientMock);
-                    assert.notOk(rxClient.client.connected);
+
+                    rxClient = <RxClient>rxClient;
+                    const clientMock = <ClientMock>rxClient.client;
+
+                    assert.notOk(clientMock.connected);
+                    assert.strictEqual(rxClient.tlevel, 0);
                 },
                 done,
                 done
             );
     });
 
-    it('Test query', function (done) {
+    test('Test query', function (done) {
         const clientMock = new ClientMock();
         const rxClient = new RxClient(clientMock);
 
         rxClient.connect()
             .flatMap<ResultSet>((client : RxClient) => client.query('select 1'))
             .subscribe(
-                (res : ResultSet) => {
+                (res : any) => {
                     assert.typeOf(res, 'object');
                     assert.ok(Array.isArray(res.rows));
                     assert.equal(clientMock.queries.length, 1);
@@ -69,7 +79,7 @@ describe('RxClient tests', function () {
             );
     });
 
-    it('Test begin', function (done) {
+    test('Test begin', function (done) {
         const rxClient = new RxClient(new ClientMock());
 
         rxClient.connect()
@@ -77,8 +87,12 @@ describe('RxClient tests', function () {
             .concatMap<RxClient>((client : RxClient) => client.begin())
             .concatMap<RxClient>((client : RxClient) => client.begin())
             .subscribe(
-                (rxClient : RxClient) => {
-                    const clientMock = <ClientMock>(rxClient.client);
+                (rxClient : any) => {
+                    assert.instanceOf(rxClient, RxClient);
+                    assert.instanceOf(rxClient.client, ClientMock);
+
+                    rxClient = <RxClient>rxClient;
+                    const clientMock = <ClientMock>rxClient.client;
 
                     assert.ok(clientMock.connected);
                     assert.equal(rxClient.tlevel, 3);
@@ -87,6 +101,42 @@ describe('RxClient tests', function () {
                         'begin',
                         'savepoint point_1',
                         'savepoint point_2'
+                    ]);
+                },
+                done,
+                done
+            );
+    });
+
+    test('Test commit', function (done) {
+        const rxClient = new RxClient(new ClientMock());
+
+        rxClient.connect()
+            .concatMap<RxClient>((client : RxClient) => client.begin())
+            .concatMap<RxClient>((client : RxClient) => client.begin())
+            .concatMap<RxClient>((client : RxClient) => client.begin())
+            .doOnNext((rxClient: RxClient) => {
+
+            })
+            .concatMap<RxClient>((client : RxClient) => client.commit())
+            .concatMap<RxClient>((client : RxClient) => client.commit(true))
+            .subscribe(
+                (rxClient : any) => {
+                    assert.instanceOf(rxClient, RxClient);
+                    assert.instanceOf(rxClient.client, ClientMock);
+
+                    rxClient = <RxClient>rxClient;
+                    const clientMock = <ClientMock>rxClient.client;
+
+                    assert.ok(clientMock.connected);
+                    assert.equal(rxClient.tlevel, 0);
+                    assert.equal(clientMock.queries.length, 5);
+                    assert.deepEqual(clientMock.queries.map(q => q.query), [
+                        'begin',
+                        'savepoint point_1',
+                        'savepoint point_2',
+                        'release savepoint point_2',
+                        'commit'
                     ]);
                 },
                 done,
