@@ -17,9 +17,10 @@ var __extends = (this && this.__extends) || function (d, b) {
  */
 var RxClientError = (function (_super) {
     __extends(RxClientError, _super);
-    function RxClientError() {
-        _super.apply(this, arguments);
+    function RxClientError(message) {
+        _super.call(this, message);
         this.name = 'RxClientError';
+        this.message = message;
     }
     return RxClientError;
 }(Error));
@@ -29,9 +30,10 @@ exports.RxClientError = RxClientError;
  */
 var RxPoolError = (function (_super) {
     __extends(RxPoolError, _super);
-    function RxPoolError() {
-        _super.apply(this, arguments);
+    function RxPoolError(message) {
+        _super.call(this, message);
         this.name = 'RxPoolError';
+        this.message = message;
     }
     return RxPoolError;
 }(Error));

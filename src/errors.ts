@@ -12,6 +12,12 @@
  */
 export class RxClientError extends Error {
     public name : string = 'RxClientError';
+    public message : string;
+
+    constructor(message? : string) {
+        super(message);
+        this.message = message;
+    }
 }
 
 /**
@@ -19,4 +25,10 @@ export class RxClientError extends Error {
  */
 export class RxPoolError extends Error {
     public name : string = 'RxPoolError';
+    public message : string;
+
+    constructor(message? : string) {
+        super(message);
+        this.message = message;
+    }
 }

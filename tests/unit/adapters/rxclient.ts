@@ -4,8 +4,7 @@ import { ClientMock } from "../pgmock";
 import RxClient from "../../../src/adapters/rxclient";
 import { ResultSet } from "pg";
 
-const config : any = Rx.config;
-config.longStackSupport = true;
+(Rx.config as any).longStackSupport = true;
 
 /**
  * RxClient Unit tests
@@ -13,7 +12,7 @@ config.longStackSupport = true;
 suite('RxClient tests', function () {
     test('Test initialization', function () {
         const client = new ClientMock();
-        var rxClient = new RxClient(client);
+        const rxClient = new RxClient(client);
 
         assert.strictEqual(rxClient.client, client);
         assert.equal(rxClient.tlevel, 0);
@@ -83,15 +82,21 @@ suite('RxClient tests', function () {
         const rxClient = new RxClient(new ClientMock());
 
         rxClient.connect()
-            .concatMap<RxClient>((client : RxClient) => client.begin())
-            .concatMap<RxClient>((client : RxClient) => client.begin())
-            .concatMap<RxClient>((client : RxClient) => client.begin())
-            .subscribe(
-                (rxClient : any) => {
-                    assert.instanceOf(rxClient, RxClient);
-                    assert.instanceOf(rxClient.client, ClientMock);
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .doOnNext((rxClient: any) => {
+                assert.instanceOf(rxClient, RxClient);
+                assert.instanceOf(rxClient.client, ClientMock);
 
-                    rxClient = <RxClient>rxClient;
+                rxClient = <RxClient>rxClient;
+                assert.strictEqual(rxClient.tlevel, 1);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .doOnNext((rxClient: RxClient) => {
+                assert.strictEqual(rxClient.tlevel, 2);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .subscribe(
+                (rxClient : RxClient) => {
                     const clientMock = <ClientMock>rxClient.client;
 
                     assert.ok(clientMock.connected);
@@ -110,22 +115,29 @@ suite('RxClient tests', function () {
 
     test('Test commit', function (done) {
         const rxClient = new RxClient(new ClientMock());
+        let errThrown = false;
 
         rxClient.connect()
-            .concatMap<RxClient>((client : RxClient) => client.begin())
-            .concatMap<RxClient>((client : RxClient) => client.begin())
-            .concatMap<RxClient>((client : RxClient) => client.begin())
-            .doOnNext((rxClient: RxClient) => {
-
-            })
             .concatMap<RxClient>((client : RxClient) => client.commit())
-            .concatMap<RxClient>((client : RxClient) => client.commit(true))
-            .subscribe(
-                (rxClient : any) => {
-                    assert.instanceOf(rxClient, RxClient);
-                    assert.instanceOf(rxClient.client, ClientMock);
+            .catch((err : Error) => {
+                assert.equal(err.message, 'No opened transaction on the client, nothing to commit');
+                errThrown = true;
 
-                    rxClient = <RxClient>rxClient;
+                return Rx.Observable.return(rxClient);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.commit())
+            .doOnNext((rxClient : RxClient) => {
+                assert.instanceOf(rxClient, RxClient);
+                assert.instanceOf(rxClient.client, ClientMock);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.commit(true))
+            .subscribe(
+                (rxClient : RxClient) => {
+                    assert.ok(errThrown);
+
                     const clientMock = <ClientMock>rxClient.client;
 
                     assert.ok(clientMock.connected);
@@ -142,5 +154,61 @@ suite('RxClient tests', function () {
                 done,
                 done
             );
+    });
+
+    test('Test rollback', function (done) {
+        const rxClient = new RxClient(new ClientMock());
+        let errThrown = false;
+
+        rxClient.connect()
+            .concatMap<RxClient>((client : RxClient) => client.rollback())
+            .catch((err : Error) => {
+                assert.equal(err.message, 'No opened transaction on the client, nothing to rollback');
+                errThrown = true;
+
+                return Rx.Observable.return(rxClient);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
+            .doOnNext((rxClient: any) => {
+                assert.instanceOf(rxClient, RxClient);
+                assert.instanceOf(rxClient.client, ClientMock);
+                assert.strictEqual(rxClient.tlevel, 3);
+            })
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
+            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback(true))
+            .subscribe(
+                (rxClient : RxClient) => {
+                    assert.ok(errThrown);
+
+                    const clientMock = <ClientMock>rxClient.client;
+
+                    assert.ok(clientMock.connected);
+                    assert.equal(rxClient.tlevel, 0);
+                    assert.equal(clientMock.queries.length, 7);
+                    assert.deepEqual(clientMock.queries.map(q => q.query), [
+                        'begin',
+                        'savepoint point_1',
+                        'savepoint point_2',
+                        'savepoint point_3',
+                        'rollback to savepoint point_3',
+                        'rollback to savepoint point_2',
+                        'rollback'
+                    ]);
+                },
+                done,
+                done
+            );
+    });
+
+    test('Test begin / commit / rollback all together', function () {
+        assert.ok(false);
+    });
+
+    test('Test disposing', function () {
+        assert.ok(false);
     });
 });

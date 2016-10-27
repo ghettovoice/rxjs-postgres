@@ -6,7 +6,9 @@
     "outDir": "dist/",
     "noImplicitAny": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "newLine": "lf",
+    "pretty": true
   },
   "include": [
     "src/**/*",

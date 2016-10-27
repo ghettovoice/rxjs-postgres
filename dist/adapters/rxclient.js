@@ -84,7 +84,7 @@ var RxClient = (function () {
         if (this._tlevel === 0) {
             query = 'begin';
         }
-        else if (this._tlevel > 0) {
+        else {
             query = "savepoint point_" + this._tlevel;
         }
         return this.query(query)

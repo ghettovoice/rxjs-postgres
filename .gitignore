@@ -1,6 +1,7 @@
 # App
-/typings/
 /tests-compiled
+/typings/
+!/typings/custom
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Linux template
