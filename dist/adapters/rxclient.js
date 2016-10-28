@@ -87,6 +87,7 @@ var RxClient = (function () {
         else {
             query = "savepoint point_" + this._tlevel;
         }
+        //noinspection CommaExpressionJS
         return this.query(query)
             .map(function () { return (++_this._tlevel, _this); });
     };
@@ -102,9 +103,11 @@ var RxClient = (function () {
             throw new errors_1.RxClientError('No opened transaction on the client, nothing to commit');
         }
         if (this._tlevel === 1 || force) {
+            //noinspection CommaExpressionJS
             return this.query('commit')
                 .map(function () { return (_this._tlevel = 0, _this); });
         }
+        //noinspection CommaExpressionJS
         return this.query("release savepoint point_" + (this._tlevel - 1))
             .map(function () { return (--_this._tlevel, _this); });
     };
@@ -120,9 +123,11 @@ var RxClient = (function () {
             throw new errors_1.RxClientError('No opened transaction on the client, nothing to rollback');
         }
         if (this._tlevel === 1 || force) {
+            //noinspection CommaExpressionJS
             return this.query('rollback')
                 .map(function () { return (_this._tlevel = 0, _this); });
         }
+        //noinspection CommaExpressionJS
         return this.query("rollback to savepoint point_" + (this._tlevel - 1))
             .map(function () { return (--_this._tlevel, _this); });
     };

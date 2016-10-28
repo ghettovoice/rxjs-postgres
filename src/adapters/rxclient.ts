@@ -93,6 +93,7 @@ export default class RxClient implements Rx.Disposable {
             query = `savepoint point_${this._tlevel}`;
         }
 
+        //noinspection CommaExpressionJS
         return this.query(query)
             .map<RxClient>(() => (++this._tlevel, this));
     }
@@ -110,10 +111,12 @@ export default class RxClient implements Rx.Disposable {
         }
 
         if (this._tlevel === 1 || force) {
+            //noinspection CommaExpressionJS
             return this.query('commit')
                 .map<RxClient>(() => (this._tlevel = 0, this));
         }
 
+        //noinspection CommaExpressionJS
         return this.query(`release savepoint point_${this._tlevel - 1}`)
             .map<RxClient>(() => (--this._tlevel, this));
     }
@@ -131,10 +134,12 @@ export default class RxClient implements Rx.Disposable {
         }
 
         if (this._tlevel === 1 || force) {
+            //noinspection CommaExpressionJS
             return this.query('rollback')
                 .map<RxClient>(() => (this._tlevel = 0, this));
         }
 
+        //noinspection CommaExpressionJS
         return this.query(`rollback to savepoint point_${this._tlevel - 1}`)
             .map<RxClient>(() => (--this._tlevel, this));
     }

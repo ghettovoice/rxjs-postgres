@@ -1,3 +1,14 @@
+/**
+ * Internal `node-postgres` interfaces for.
+ * Used for mocking.
+ *
+ * @package rxjs-postgres
+ * @author Vladimir Vershinin
+ * @license MIT
+ * @copyright (c) 2016, Vladimir Vershinin
+ */
+
+
 export declare interface PgQuery {
     text : string;
 }
@@ -15,8 +26,8 @@ export declare interface PgClient {
 }
 
 export declare interface PgPool {
-    connect(cb?: (err? : Error, client? : PgClient) => void): Promise<PgClient>;
-    take(cb?: (err? : Error, client? : PgClient) => void): Promise<PgClient>;
+    connect(callback?: (err? : Error, client? : PgClient) => void): Promise<PgClient>;
+    take(callback?: (err? : Error, client? : PgClient) => void): Promise<PgClient>;
     query(queryText : string, values : any[], callback? : (err? : Error, res? : PgQueryResult) => void): Promise<PgQueryResult>;
-    end(cb?: (err? : Error) => void): Promise<void>;
+    end(callback?: (err? : Error) => void): Promise<void>;
 }
