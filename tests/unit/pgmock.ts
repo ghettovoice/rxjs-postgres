@@ -72,32 +72,40 @@ export class PoolMock implements PgPool {
     public pool : ClientMock[];
 
     constructor(options : Pool.PoolOptions, Client? : ClientConstructor) {
-        super(options, Client);
         this.Client = ClientMock;
     }
 
     connect(callback? : (err? : Error, client? : PgClient) => void) : Promise<PgClient> {
-        // return new Promise((resolve : Function) => {
-        //     setTimeout(() => {
-        //         const client = new ClientMock();
-        //         const self = this;
-        //
-        //         client.release = function () {
-        //             let i = self.pool.indexOf(client);
-        //
-        //             if (i > -1) {
-        //                 self.pool.splice(i, 1);
-        //                 client.released = true;
-        //                 client.end();
-        //             }
-        //         };
-        //
-        //         this.pool.push(client);
-        //
-        //         typeof callback === 'function' && callback(client);
-        //         resolve(client);
-        //     }, 100);
-        // });
+        return new Promise<PgClient>((resolve : Function, reject? : Function) => {
+            setTimeout(() => {
+                const client = new ClientMock();
+                const self = this;
+
+                // todo test releasing and auto disposing
+                (<any>client).release = function () {
+                    let i = self.pool.indexOf(client);
+
+                    if (i > -1) {
+                        self.pool.splice(i, 1);
+                        client.released = true;
+                        client.end();
+                    }
+                };
+
+                this.pool.push(client);
+
+                client.connect((err? : Error, client? : PgClient) => {
+                    if (err) {
+                        typeof callback === 'function' && callback(err, client);
+                        reject(client);
+                        return;
+                    }
+
+                    typeof callback === 'function' && callback(undefined, client);
+                    resolve(client);
+                });
+            }, 100);
+        });
     }
 
     take(callback? : (err? : Error, client? : PgClient) => void) : Promise<PgClient> {
@@ -105,29 +113,31 @@ export class PoolMock implements PgPool {
     }
 
     query(queryText : string, values : any[], callback? : (err? : Error, res? : PgQueryResult) => void) : Promise<PgQueryResult> {
-        return this.connect().then((client) => new Promise((resolve? : Function, reject? : Function) => {
+        return this.connect().then<PgQueryResult>((client) => new Promise((resolve? : Function, reject? : Function) => {
             client.query(queryText, values, (err? : Error, res? : ResultSet) => {
                 if (err) {
                     return reject(err);
                 }
 
-                typeof callback === 'function' && callback(res);
-                resovle(res);
+                typeof callback === 'function' && callback(undefined, res);
+                resolve(res);
             });
         }));
     }
 
     end(callback? : (err? : Error)=>void) : Promise<void> {
-        return Promise.all(this.pool.map((client : ClientMock, i : number) => new Promise((resolve? : Function, reject? : Function) => {
-            client.end((err? : Error) => {
-                if (err) {
-                    return reject(err);
-                }
+        return Promise.all<void[]>(
+            this.pool.map((client : ClientMock, i : number) => new Promise((resolve? : Function, reject? : Function) => {
+                client.end((err? : Error) => {
+                    if (err) {
+                        return reject(err);
+                    }
 
-                this.pool.splice(i, 1);
-                resolve();
-            });
-        }))).then(() => {
+                    this.pool.splice(i, 1);
+                    resolve();
+                });
+            }))
+        ).then<void>(() => {
             this.pool = [];
             typeof callback === 'function' && callback();
         });
