@@ -1,8 +1,12 @@
 # rxjs-postgres
 
-> RxJs decorator for node-postgres
+> RxJs adapters and decorators for node-postgres
 
-PostgreSQL ver. >= 9.1
+[![Build Status](https://travis-ci.org/ghettovoice/rxjs-postgres.svg?branch=master)](https://travis-ci.org/ghettovoice/rxjs-postgres)
+
+## System requirements
+
+* PostgreSQL ver. >= 9.1
 
 ## Installation
 

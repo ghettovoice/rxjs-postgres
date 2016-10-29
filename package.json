@@ -1,7 +1,7 @@
 {
   "name": "rxjs-postgres",
   "version": "0.0.1",
-  "description": "RxJs decorator for node-postgres",
+  "description": "RxJs adapters and decorators for node-postgres",
   "main": "dist/src/index.js",
   "directories": {
     "test": "tests"
@@ -31,6 +31,8 @@
   },
   "homepage": "https://gitlab.com/ghettovoice/rxjs-postgres#README",
   "devDependencies": {
+    "@types/es6-shim": "^0.31.32",
+    "@types/node": "^6.0.45",
     "@types/chai": "^3.4.34",
     "@types/mocha": "^2.2.32",
     "@types/sinon": "^1.16.31",
@@ -43,8 +45,6 @@
     "typings": "^1.4.0"
   },
   "dependencies": {
-    "@types/es6-shim": "^0.31.32",
-    "@types/node": "^6.0.45",
     "pg": "^6.1.0",
     "pg-pool": "^1.5.0",
     "rx": "^4.1.0"
