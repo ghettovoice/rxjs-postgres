@@ -1,7 +1,7 @@
 "use strict";
 var assert = require("assert");
 var Rx = require("rx");
-var rxclient_1 = require("./rxclient");
+var RxClient_1 = require("./RxClient");
 /**
  * Standalone RxJs adapter for `pg.Pool`.
  */
@@ -35,7 +35,7 @@ var RxPool = (function () {
      */
     RxPool.prototype.connect = function () {
         var connect = Rx.Observable.fromNodeCallback(this._pool.connect, this._pool);
-        return connect().map(function (client) { return new rxclient_1.default(client); });
+        return connect().map(function (client) { return new RxClient_1.default(client); });
     };
     /**
      * @return {Rx.Observable<RxClient>}

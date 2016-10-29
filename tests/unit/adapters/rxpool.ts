@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { PoolMock } from "../pgmock";
-import RxPool from "../../../src/adapters/rxpool";
+import RxPool from "../../../src/adapters/RxPool";
 
 
 suite('RxPool Adapter Unit tests', function () {

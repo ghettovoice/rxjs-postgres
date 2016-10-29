@@ -2,7 +2,7 @@ import { assert } from "chai";
 import { ResultSet } from "pg";
 import { Rx } from "../../boot";
 import { ClientMock } from "../pgmock";
-import RxClient from "../../../src/adapters/rxclient";
+import RxClient from "../../../src/adapters/RxClient";
 
 
 suite('RxClient Adapter Unit tests', function () {

@@ -1,22 +1,20 @@
 import Pool = require("pg-pool");
 import { ResultSet } from "pg";
 import * as Rx from "rx";
-import RxClient from "./rxclient";
+import RxClient from "./RxClient";
+import { PgPool } from "../pg";
 /**
  * Standalone RxJs adapter for `pg.Pool`.
  */
-export default class RxPool implements Rx.Disposable {
+export default class RxPool {
     private _pool;
     private _tclient;
-    private _disposed;
     /**
      * @param {Pool} pool
      */
-    constructor(pool: Pool);
-    readonly pool: Pool;
+    constructor(pool: Pool | PgPool);
+    readonly pool: Pool | PgPool;
     readonly tclient: RxClient;
-    readonly isDisposed: boolean;
-    dispose(): void;
     /**
      * @return {Rx.Observable<RxClient>}
      */

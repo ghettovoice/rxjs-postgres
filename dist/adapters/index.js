@@ -10,5 +10,5 @@ function __export(m) {
  * @license MIT
  * @copyright (c) 2016, Vladimir Vershinin
  */
-__export(require('./rxpool'));
-__export(require('./rxclient'));
+__export(require('./RxPool'));
+__export(require('./RxClient'));

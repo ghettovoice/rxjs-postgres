@@ -2,7 +2,7 @@ import Pool = require("pg-pool");
 import * as assert from "assert";
 import { Client, ResultSet } from "pg";
 import * as Rx from "rx";
-import RxClient from "./rxclient";
+import RxClient from "./RxClient";
 import { PgPool } from "../pg";
 
 /**
