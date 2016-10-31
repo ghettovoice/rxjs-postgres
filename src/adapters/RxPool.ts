@@ -36,9 +36,8 @@ export default class RxPool {
      * @return {Rx.Observable<RxClient>}
      */
     connect() : Rx.Observable<RxClient> {
-        const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(this._pool.connect, this._pool);
-
-        return connect().map<RxClient>((client : Client) => new RxClient(client));
+        return Rx.Observable.fromPromise<Client>(this._pool.connect())
+            .map<RxClient>((client : Client) => new RxClient(client));
     }
 
     /**
@@ -52,9 +51,8 @@ export default class RxPool {
      * @return {Rx.Observable<RxPool>}
      */
     end() : Rx.Observable<RxPool> {
-        const end : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(this._pool.end, this._pool);
-
-        return end().map<RxPool>(() => this);
+        return Rx.Observable.fromPromise<void>(this._pool.end())
+            .map<RxPool>(() => this);
     }
 
     /**
@@ -63,9 +61,7 @@ export default class RxPool {
      * @return {Rx.Observable<ResultSet>}
      */
     query(queryText : string, values? : any[]) : Rx.Observable<ResultSet> {
-        const query : (queryText : string, values? : any[]) => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(this._pool.query, this._pool);
-
-        return query(queryText, values);
+        return Rx.Observable.fromPromise<ResultSet>(this._pool.query(queryText, values));
     }
 
     /**

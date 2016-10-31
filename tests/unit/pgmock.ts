@@ -11,6 +11,7 @@ export class ClientMock implements PgClient {
     public queries : any[] = [];
     public released : boolean = false;
     public destroyed : boolean = false;
+    release? : (err? : Error) => void = () => {};
 
     constructor(config? : any) {
 
@@ -69,9 +70,9 @@ export class QueryMock implements PgQuery {
 
 export class PoolMock implements PgPool {
     public Client : Function = ClientMock;
-    public pool : ClientMock[];
+    public pool : ClientMock[] = [];
 
-    constructor(options : Pool.PoolOptions, Client? : ClientConstructor) {
+    constructor(options? : Pool.PoolOptions, Client? : ClientConstructor) {
         this.Client = ClientMock;
     }
 
@@ -96,8 +97,9 @@ export class PoolMock implements PgPool {
 
                 client.connect((err? : Error, client? : PgClient) => {
                     if (err) {
-                        typeof callback === 'function' && callback(err, client);
-                        reject(client);
+                        typeof callback === 'function' && callback(err);
+                        reject(err);
+
                         return;
                     }
 

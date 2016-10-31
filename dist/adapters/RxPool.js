@@ -34,8 +34,8 @@ var RxPool = (function () {
      * @return {Rx.Observable<RxClient>}
      */
     RxPool.prototype.connect = function () {
-        var connect = Rx.Observable.fromNodeCallback(this._pool.connect, this._pool);
-        return connect().map(function (client) { return new RxClient_1.default(client); });
+        return Rx.Observable.fromPromise(this._pool.connect())
+            .map(function (client) { return new RxClient_1.default(client); });
     };
     /**
      * @return {Rx.Observable<RxClient>}
@@ -48,8 +48,8 @@ var RxPool = (function () {
      */
     RxPool.prototype.end = function () {
         var _this = this;
-        var end = Rx.Observable.fromNodeCallback(this._pool.end, this._pool);
-        return end().map(function () { return _this; });
+        return Rx.Observable.fromPromise(this._pool.end())
+            .map(function () { return _this; });
     };
     /**
      * @param {string} queryText
@@ -57,8 +57,7 @@ var RxPool = (function () {
      * @return {Rx.Observable<ResultSet>}
      */
     RxPool.prototype.query = function (queryText, values) {
-        var query = Rx.Observable.fromNodeCallback(this._pool.query, this._pool);
-        return query(queryText, values);
+        return Rx.Observable.fromPromise(this._pool.query(queryText, values));
     };
     /**
      * @return {Rx.Observable<RxClient>}
