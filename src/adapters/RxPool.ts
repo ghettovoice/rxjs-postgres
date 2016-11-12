@@ -69,7 +69,7 @@ export default class RxPool {
      */
     begin() : Rx.Observable<RxClient> {
         const observable = this._tclient ?
-                           Rx.Observable.return(this._tclient) :
+                           Rx.Observable.return<RxClient>(this._tclient) :
                            this.connect();
 
         return observable.flatMap<RxClient>((client : RxClient) => {
