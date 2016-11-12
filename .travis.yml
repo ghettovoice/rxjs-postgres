@@ -10,3 +10,4 @@ cache:
     - typings
 #before_install:
 #  - npm i -g typings typescript
+script: npm test && npm run test:coveralls

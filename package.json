@@ -17,7 +17,7 @@
     "test:coveralls": "cat coverage/lcov-remap.info | coveralls ",
     "test:cov": "rm -rf coverage && npm run test:compile && npm run test:istanbul && npm run test:remap && rm -rf tests-compiled",
     "test:mocha": "npm run test:compile && mocha -u tdd 'tests-compiled/tests/**/*.js' && rm -rf tests-compiled",
-    "test": "npm run test:cov && npm run test:coveralls",
+    "test": "npm run test:cov",
     "typings": "typings"
   },
   "repository": {
