@@ -63,7 +63,7 @@ suite('RxClient Adapter Unit tests', function () {
 
         rxClient.connect()
             .concatMap<ResultSet>((rxClient : RxClient) => {
-                return Rx.Observable.merge(
+                return Rx.Observable.merge<ResultSet>(
                     rxClient.query('select 1'),
                     rxClient.query('select current_timestamp'),
                     rxClient.query("select 'qwerty")

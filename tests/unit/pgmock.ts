@@ -11,6 +11,7 @@ export class ClientMock implements PgClient {
     public queries : any[] = [];
     public released : boolean = false;
     public destroyed : boolean = false;
+    public listeners : any = {};
     release? : (err? : Error) => void = () => {};
 
     constructor(config? : any) {
@@ -26,7 +27,7 @@ export class ClientMock implements PgClient {
 
         setTimeout(() => {
             this.connected = true;
-            callback(undefined, this);
+            typeof callback === 'function' && callback(undefined, this);
         }, 100);
     }
 
@@ -35,7 +36,9 @@ export class ClientMock implements PgClient {
             this.queries = [];
             this.connected = false;
             this.destroyed = true;
-            callback();
+
+            typeof callback === 'function' && callback();
+            this.emit('end');
         }, 100);
     }
 
@@ -49,14 +52,35 @@ export class ClientMock implements PgClient {
         });
 
         setTimeout(() => {
-            callback(undefined, {
-                rows: [],
-            });
+            if (typeof callback === 'function') {
+                callback(undefined, {
+                    rows: [],
+                });
+            }
         }, 100);
 
         return new QueryMock({
             text: queryText
         });
+    }
+
+    addListener(event : string, listener : (...args : any[]) => void) : void {
+        this.listeners[event] || (this.listeners[event] = []);
+        this.listeners[event].push(listener);
+    }
+
+    removeListener(event : string, listener : (...args : any[]) => void) : void {
+        const index = this.listeners[event].indexOf(listener);
+
+        if (index !== -1) {
+            this.listeners[event].splice(index, 1);
+        }
+    }
+
+    emit(event : string, ...args : any[]) : void {
+        if (this.listeners[event]) {
+            this.listeners[event].forEach((listener : (...args : any[]) => void) => listener(...args));
+        }
     }
 }
 
@@ -83,7 +107,7 @@ export class PoolMock implements PgPool {
                 const self = this;
 
                 // todo test releasing and auto disposing
-                (<any>client).release = function () {
+                (<any>client).release = function (err? : Error) {
                     let i = self.pool.indexOf(client);
 
                     if (i > -1) {
@@ -115,11 +139,16 @@ export class PoolMock implements PgPool {
     }
 
     query(queryText : string, values : any[], callback? : (err? : Error, res? : PgQueryResult) => void) : Promise<PgQueryResult> {
-        return this.connect().then<PgQueryResult>((client) => new Promise((resolve? : Function, reject? : Function) => {
-            client.query(queryText, values, (err? : Error, res? : ResultSet) => {
+        return this.connect().then<PgQueryResult>((client : PgClient) => new Promise((resolve? : Function, reject? : Function) => {
+            client.query(queryText, values, (err? : Error, res? : any) => {
+                client.release(err);
+
                 if (err) {
                     return reject(err);
                 }
+
+                // for debug and test
+                res.client = client;
 
                 typeof callback === 'function' && callback(undefined, res);
                 resolve(res);
