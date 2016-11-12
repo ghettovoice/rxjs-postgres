@@ -14,6 +14,7 @@
     "test:remap-lcov": "remap-istanbul -i coverage/coverage.json -o coverage/lcov-remap.info -t lcovonly",
     "test:remap": "npm run test:remap-json && npm run test:remap-html  && npm run test:remap-lcov",
     "test:istanbul": "istanbul cover _mocha -- -u tdd 'tests-compiled/tests/**/*.js'",
+    "test:coveralls": "cat coverage/lcov-remap.info | coveralls ",
     "test:cov": "rm -rf coverage && npm run test:compile && npm run test:istanbul && npm run test:remap && rm -rf tests-compiled",
     "test:mocha": "npm run test:compile && mocha -u tdd 'tests-compiled/tests/**/*.js' && rm -rf tests-compiled",
     "test": "npm run test:mocha",
