@@ -59,10 +59,7 @@
     "LICENSE",
     "README.md",
     "dist",
-    "src",
-    "types",
-    "tsconfig.json",
-    "typings.json"
+    "types"
   ],
   "typings": "types/index"
 }
