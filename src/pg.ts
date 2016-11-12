@@ -1,3 +1,4 @@
+import { Stream } from "stream";
 /**
  * Internal `node-postgres` interfaces for.
  * Used for mocking.
@@ -18,6 +19,7 @@ export declare interface PgQueryResult {
 }
 
 export declare interface PgClient {
+    connection: { stream : { readyState : string } };
     release? : (err? : Error) => void;
 
     query(queryText : string, values : any[], callback? : (err? : Error, res? : PgQueryResult) => void) : PgQuery;

@@ -1,9 +1,9 @@
 import Pool = require("pg-pool");
-import * as assert from "assert";
-import { Client, ResultSet } from "pg";
+import { ResultSet } from "pg";
 import * as Rx from "rx";
 import RxClient from "./RxClient";
-import { PgPool } from "../pg";
+import { PgPool, PgClient } from "../pg";
+import { RxPoolError } from "../errors";
 
 /**
  * Standalone RxJs adapter for `pg.Pool`.
@@ -21,7 +21,7 @@ export default class RxPool {
             return new RxPool(pool);
         }
 
-        this._pool = pool;
+        this._pool = <PgPool>pool;
     }
 
     get pool() : Pool | PgPool {
@@ -36,8 +36,8 @@ export default class RxPool {
      * @return {Rx.Observable<RxClient>}
      */
     connect() : Rx.Observable<RxClient> {
-        return Rx.Observable.fromPromise<Client>(this._pool.connect())
-            .map<RxClient>((client : Client) => new RxClient(client));
+        return Rx.Observable.fromPromise<PgClient>(this._pool.connect())
+            .map<RxClient>((client : PgClient) => new RxClient(client));
     }
 
     /**
@@ -85,7 +85,9 @@ export default class RxPool {
      * @throws {AssertionError}
      */
     commit(force? : boolean) : Rx.Observable<RxClient> {
-        assert(this._tclient, 'Transaction client exists');
+        if (!this._tclient) {
+            throw new RxPoolError('Client with open transaction does not exists');
+        }
 
         return this._tclient.commit(force);
     }
@@ -96,7 +98,9 @@ export default class RxPool {
      * @throws {AssertionError}
      */
     rollback(force? : boolean) : Rx.Observable<RxClient> {
-        assert(this._tclient, 'Transaction client exists');
+        if (!this._tclient) {
+            throw new RxPoolError('Client with open transaction does not exists');
+        }
 
         return this._tclient.rollback(force);
     }

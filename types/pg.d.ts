@@ -16,6 +16,11 @@ export interface PgQueryResult {
     rows: any[];
 }
 export interface PgClient {
+    connection: {
+        stream: {
+            readyState: string;
+        };
+    };
     release?: (err?: Error) => void;
     query(queryText: string, values: any[], callback?: (err?: Error, res?: PgQueryResult) => void): PgQuery;
     connect(callback?: (err?: Error, res?: PgClient) => void): void;

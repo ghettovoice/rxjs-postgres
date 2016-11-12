@@ -39,6 +39,13 @@ var RxClient = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(RxClient.prototype, "connected", {
+        get: function () {
+            return this._client.connection.stream.readyState === 'open';
+        },
+        enumerable: true,
+        configurable: true
+    });
     RxClient.prototype.release = function () {
         typeof this._client.release === 'function' && this._client.release();
     };
@@ -53,6 +60,9 @@ var RxClient = (function () {
      */
     RxClient.prototype.connect = function () {
         var _this = this;
+        if (this.connected) {
+            return Rx.Observable.return(this);
+        }
         var connect = Rx.Observable.fromNodeCallback(this._client.connect, this._client);
         return connect().map(function (client) { return _this; });
     };
@@ -71,7 +81,8 @@ var RxClient = (function () {
      */
     RxClient.prototype.query = function (queryText, values) {
         var query = Rx.Observable.fromNodeCallback(this._client.query, this._client);
-        return query(queryText, values);
+        return this.connect()
+            .flatMap(function () { return query(queryText, values); });
     };
     /**
      * @return {Rx.Observable<RxClient>}
@@ -100,7 +111,7 @@ var RxClient = (function () {
         var _this = this;
         assert(this._tlevel >= 0, 'Current transaction level >= 0');
         if (this._tlevel === 0) {
-            throw new errors_1.RxClientError('No opened transaction on the client, nothing to commit');
+            throw new errors_1.RxClientError('The transaction is not open on the client');
         }
         if (this._tlevel === 1 || force) {
             //noinspection CommaExpressionJS
@@ -120,7 +131,7 @@ var RxClient = (function () {
         var _this = this;
         assert(this._tlevel >= 0, 'Current transaction level >= 0');
         if (this._tlevel === 0) {
-            throw new errors_1.RxClientError('No opened transaction on the client, nothing to rollback');
+            throw new errors_1.RxClientError('The transaction is not open on the client');
         }
         if (this._tlevel === 1 || force) {
             //noinspection CommaExpressionJS

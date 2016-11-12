@@ -12,10 +12,11 @@ export class ClientMock implements PgClient {
     public released : boolean = false;
     public destroyed : boolean = false;
     public listeners : any = {};
+    public connection: { stream : { readyState : string } };
     release? : (err? : Error) => void = () => {};
 
     constructor(config? : any) {
-
+        this.connection = { stream : { readyState : 'closed' } };
     }
 
     connect(callback? : (err? : Error, res? : PgClient) => void) : void {
@@ -27,6 +28,7 @@ export class ClientMock implements PgClient {
 
         setTimeout(() => {
             this.connected = true;
+            this.connection.stream.readyState = 'open';
             typeof callback === 'function' && callback(undefined, this);
         }, 100);
     }

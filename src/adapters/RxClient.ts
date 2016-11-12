@@ -21,7 +21,7 @@ export default class RxClient implements Rx.Disposable {
             return new RxClient(client);
         }
 
-        this._client = client;
+        this._client = <PgClient>client;
         this._tlevel = 0;
         this._disposed = false;
     }
@@ -36,6 +36,10 @@ export default class RxClient implements Rx.Disposable {
 
     get isDisposed() : boolean {
         return this._disposed;
+    }
+
+    get connected() : boolean {
+        return this._client.connection.stream.readyState === 'open';
     }
 
     release() : void {
@@ -53,6 +57,10 @@ export default class RxClient implements Rx.Disposable {
      * @return {Rx.Observable<RxClient>}
      */
     connect() : Rx.Observable<RxClient> {
+        if (this.connected) {
+            return Rx.Observable.return<RxClient>(this);
+        }
+
         const connect : () => Rx.Observable<Client> = Rx.Observable.fromNodeCallback<Client>(this._client.connect, this._client);
 
         return connect().map((client : Client) => this);
@@ -75,7 +83,8 @@ export default class RxClient implements Rx.Disposable {
     query(queryText : string, values? : any[]) : Rx.Observable<ResultSet> {
         const query : (queryText : string, values? : any[]) => Rx.Observable<ResultSet> = Rx.Observable.fromNodeCallback<ResultSet>(this._client.query, this._client);
 
-        return query(queryText, values);
+        return this.connect()
+            .flatMap<ResultSet>(() => query(queryText, values));
     }
 
     /**
@@ -107,7 +116,7 @@ export default class RxClient implements Rx.Disposable {
         assert(this._tlevel >= 0, 'Current transaction level >= 0');
 
         if (this._tlevel === 0) {
-            throw new RxClientError('No opened transaction on the client, nothing to commit');
+            throw new RxClientError('The transaction is not open on the client');
         }
 
         if (this._tlevel === 1 || force) {
@@ -130,7 +139,7 @@ export default class RxClient implements Rx.Disposable {
         assert(this._tlevel >= 0, 'Current transaction level >= 0');
 
         if (this._tlevel === 0) {
-            throw new RxClientError('No opened transaction on the client, nothing to rollback');
+            throw new RxClientError('The transaction is not open on the client');
         }
 
         if (this._tlevel === 1 || force) {

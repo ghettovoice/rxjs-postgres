@@ -1,7 +1,7 @@
 "use strict";
-var assert = require("assert");
 var Rx = require("rx");
 var RxClient_1 = require("./RxClient");
+var errors_1 = require("../errors");
 /**
  * Standalone RxJs adapter for `pg.Pool`.
  */
@@ -78,7 +78,9 @@ var RxPool = (function () {
      * @throws {AssertionError}
      */
     RxPool.prototype.commit = function (force) {
-        assert(this._tclient, 'Transaction client exists');
+        if (!this._tclient) {
+            throw new errors_1.RxPoolError('Client with open transaction does not exists');
+        }
         return this._tclient.commit(force);
     };
     /**
@@ -87,7 +89,9 @@ var RxPool = (function () {
      * @throws {AssertionError}
      */
     RxPool.prototype.rollback = function (force) {
-        assert(this._tclient, 'Transaction client exists');
+        if (!this._tclient) {
+            throw new errors_1.RxPoolError('Client with open transaction does not exists');
+        }
         return this._tclient.rollback(force);
     };
     return RxPool;

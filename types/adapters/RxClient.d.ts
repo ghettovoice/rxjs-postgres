@@ -15,6 +15,7 @@ export default class RxClient implements Rx.Disposable {
     readonly client: Client | PgClient;
     readonly tlevel: number;
     readonly isDisposed: boolean;
+    readonly connected: boolean;
     release(): void;
     dispose(): void;
     /**
