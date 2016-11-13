@@ -96,8 +96,34 @@ suite('RxPool Adapter Unit tests', function () {
             );
     });
 
-    test('Test begin', function () {
+    test('Test begin', function (done) {
+        const pool = new PoolMock();
+        const rxPool = new RxPool(<PgPool>pool);
 
+        rxPool.begin()
+            .doOnNext((rxClient : RxClient) => {
+                assert.instanceOf(rxClient, RxClient);
+                assert.instanceOf(rxClient.client, ClientMock);
+                assert.strictEqual(rxClient.tlevel, 1);
+            })
+            .concatMap<RxClient, any>(
+                (rxClient : RxClient) => rxPool.begin(),
+                (rxClient1 : RxClient, rxClient2: RxClient) => ({ rxClient1, rxClient2 })
+            )
+            .subscribe(
+                (result : any) => {
+                    assert.strictEqual(result.rxClient1, result.rxClient2);
+                    assert.strictEqual(rxPool.tclient, result.rxClient1);
+                    assert.equal(rxPool.tclient.tlevel, 2);
+                    assert.equal(result.rxClient1.client.queries.length, 2);
+                    assert.deepEqual(result.rxClient1.client.queries.map((q : any) => q.query), [
+                        'begin',
+                        'savepoint point_1'
+                    ]);
+                },
+                done,
+                done
+            );
     });
 
     test('Test commit', function () {

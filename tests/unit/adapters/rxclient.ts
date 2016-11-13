@@ -87,8 +87,7 @@ suite('RxClient Adapter Unit tests', function () {
         const client = new ClientMock();
         const rxClient = new RxClient(<PgClient>client);
 
-        rxClient.connect()
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+        rxClient.begin()
             .doOnNext((rxClient : any) => {
                 assert.instanceOf(rxClient, RxClient);
                 assert.instanceOf(rxClient.client, ClientMock);
@@ -104,7 +103,7 @@ suite('RxClient Adapter Unit tests', function () {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 3);
                     assert.equal(client.queries.length, 3);
-                    assert.deepEqual(client.queries.map(q => q.query), [
+                    assert.deepEqual(client.queries.map((q : any) => q.query), [
                         'begin',
                         'savepoint point_1',
                         'savepoint point_2'
@@ -136,7 +135,7 @@ suite('RxClient Adapter Unit tests', function () {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
                     assert.equal(client.queries.length, 5);
-                    assert.deepEqual(client.queries.map(q => q.query), [
+                    assert.deepEqual(client.queries.map((q : any) => q.query), [
                         'begin',
                         'savepoint point_1',
                         'savepoint point_2',
@@ -173,7 +172,7 @@ suite('RxClient Adapter Unit tests', function () {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
                     assert.equal(client.queries.length, 7);
-                    assert.deepEqual(client.queries.map(q => q.query), [
+                    assert.deepEqual(client.queries.map((q : any) => q.query), [
                         'begin',
                         'savepoint point_1',
                         'savepoint point_2',
@@ -193,8 +192,7 @@ suite('RxClient Adapter Unit tests', function () {
         const rxClient = new RxClient(<PgClient>client);
         let errThrown = false;
 
-        rxClient.connect()
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+        rxClient.begin()
             .concatMap<ResultSet, RxClient>(
                 (rxClient : RxClient) => rxClient.query('insert into t (q, w, e) values ($1, $2, $3)', [ 1, 2, 3 ]),
                 (rxClient : RxClient) => rxClient
@@ -238,7 +236,7 @@ suite('RxClient Adapter Unit tests', function () {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
                     assert.equal(client.queries.length, 9);
-                    assert.deepEqual(client.queries.map(q => q.query), [
+                    assert.deepEqual(client.queries.map((q : any) => q.query), [
                         'begin',
                         'insert into t (q, w, e) values ($1, $2, $3)',
                         'savepoint point_1',
