@@ -65,43 +65,42 @@ export default class RxPool {
     }
 
     /**
-     * @return {Rx.Observable<RxClient>}
+     * @return {Rx.Observable<RxPool>}
      */
-    begin() : Rx.Observable<RxClient> {
+    begin() : Rx.Observable<RxPool> {
         const observable = this._tclient ?
                            Rx.Observable.return<RxClient>(this._tclient) :
-                           this.connect();
+                           this.connect().doOnNext((rxClient : RxClient) => this._tclient = rxClient);
 
-        return observable.flatMap<RxClient>((client : RxClient) => {
-                this._tclient = client;
-
-                return client.begin();
-            });
+        return observable.flatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .map<RxPool>(() => this);
     }
 
     /**
      * @param {boolean} [force] Commit transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @return {Rx.Observable<RxPool>}
+     * @throws {RxPoolError}
      */
-    commit(force? : boolean) : Rx.Observable<RxClient> {
+    commit(force? : boolean) : Rx.Observable<RxPool> {
         if (!this._tclient) {
             throw new RxPoolError('Client with open transaction does not exists');
         }
 
-        return this._tclient.commit(force);
+        return this._tclient.commit(force)
+            .map<RxPool>(() => this);
     }
 
     /**
      * @param {boolean} [force] Rollback transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @return {Rx.Observable<RxPool>}
+     * @throws {RxPoolError}
      */
-    rollback(force? : boolean) : Rx.Observable<RxClient> {
+    rollback(force? : boolean) : Rx.Observable<RxPool> {
         if (!this._tclient) {
             throw new RxPoolError('Client with open transaction does not exists');
         }
 
-        return this._tclient.rollback(force);
+        return this._tclient.rollback(force)
+            .map<RxPool>(() => this);
     }
 }

@@ -55,9 +55,10 @@ suite('RxPool Adapter Unit tests', function () {
             })
             .concatMap<RxPool>(() => rxPool.end())
             .subscribe(
-                (rxPool : RxPool) => {
-                    assert.instanceOf(rxPool, RxPool);
-                    assert.strictEqual((<PoolMock>rxPool.pool).pool.length, 0);
+                (rxPool_ : RxPool) => {
+                    assert.instanceOf(rxPool_, RxPool);
+                    assert.strictEqual(rxPool_, rxPool);
+                    assert.strictEqual((<PoolMock>rxPool_.pool).pool.length, 0);
                 },
                 done,
                 done
@@ -72,8 +73,7 @@ suite('RxPool Adapter Unit tests', function () {
             rxPool.query('select 1'),
             rxPool.query('select current_timestamp'),
             rxPool.query("select 'qwerty")
-        )
-            .doOnNext((result : any) => {
+        ).doOnNext((result : any) => {
                 assert.lengthOf(result.client.queries, 1);
             })
             .flatMap<any, any>(
@@ -101,22 +101,18 @@ suite('RxPool Adapter Unit tests', function () {
         const rxPool = new RxPool(<PgPool>pool);
 
         rxPool.begin()
-            .doOnNext((rxClient : RxClient) => {
-                assert.instanceOf(rxClient, RxClient);
-                assert.instanceOf(rxClient.client, ClientMock);
-                assert.strictEqual(rxClient.tlevel, 1);
+            .doOnNext((rxPool_ : RxPool) => {
+                assert.instanceOf(rxPool_, RxPool);
+                assert.strictEqual(rxPool_, rxPool);
+                assert.strictEqual(rxPool.tclient.tlevel, 1);
             })
-            .concatMap<RxClient, any>(
-                (rxClient : RxClient) => rxPool.begin(),
-                (rxClient1 : RxClient, rxClient2: RxClient) => ({ rxClient1, rxClient2 })
-            )
+            .concatMap<RxPool>((rxPool_ : RxPool) => rxPool_.begin())
             .subscribe(
-                (result : any) => {
-                    assert.strictEqual(result.rxClient1, result.rxClient2);
-                    assert.strictEqual(rxPool.tclient, result.rxClient1);
-                    assert.equal(rxPool.tclient.tlevel, 2);
-                    assert.equal(result.rxClient1.client.queries.length, 2);
-                    assert.deepEqual(result.rxClient1.client.queries.map((q : any) => q.query), [
+                (rxPool_ : RxPool) => {
+                    assert.strictEqual(rxPool_, rxPool);
+                    assert.equal(rxPool_.tclient.tlevel, 2);
+                    assert.lengthOf((<ClientMock>rxPool_.tclient.client).queries, 2);
+                    assert.deepEqual((<ClientMock>rxPool_.tclient.client).queries.map((q : any) => q.query), [
                         'begin',
                         'savepoint point_1'
                     ]);
@@ -126,11 +122,43 @@ suite('RxPool Adapter Unit tests', function () {
             );
     });
 
-    test('Test commit', function () {
+    test('Test commit', function (done) {
         const pool = new PoolMock();
         const rxPool = new RxPool(<PgPool>pool);
 
         assert.throw(() => rxPool.commit(), RxPoolError, 'Client with open transaction does not exists');
+        done();
+        // Rx.Observable.merge<RxPool>(
+        //     rxPool.begin(),
+        //     rxPool.begin(),
+        //     rxPool.begin()
+        // ).doOnNext((rxPool_ : RxPool) => {
+        //     console.log(rxPool_.tclient);
+        // })/*.flatMap<RxPool>(() => {
+        //     console.log(rxPool.tclient);
+        //     return rxPool.commit();
+        // })
+        //     .doOnNext((rxPool_ : RxPool) => {
+        //         assert.instanceOf(rxPool_, RxPool);
+        //         assert.strictEqual(rxPool_, rxPool);
+        //         assert.strictEqual(rxPool_.tclient.tlevel, 1);
+        //     })
+        //     .flatMap<RxPool>(() => rxPool.commit(true))*/
+        //     .subscribe(
+        //         (rxPool_ : RxPool) => {
+        //             // assert.strictEqual(rxPool_.tclient.tlevel, 0);
+        //             // assert.lengthOf((<ClientMock>rxPool_.tclient.client).queries, 5);
+        //             // assert.deepEqual((<ClientMock>rxPool_.tclient.client).queries.map((q : any) => q.query), [
+        //             //     'begin',
+        //             //     'savepoint point_1',
+        //             //     'savepoint point_2',
+        //             //     'release savepoint point_2',
+        //             //     'commit'
+        //             // ]);
+        //         },
+        //         done,
+        //         done
+        //     );
     });
 
     test('Test rollback', function () {

@@ -86,7 +86,6 @@ var RxClient = (function () {
     };
     /**
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
      */
     RxClient.prototype.begin = function () {
         var _this = this;
@@ -105,7 +104,7 @@ var RxClient = (function () {
     /**
      * @param {boolean} [force] Commit transaction with all savepoints.
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @throws {RxClientError}
      */
     RxClient.prototype.commit = function (force) {
         var _this = this;
@@ -125,7 +124,7 @@ var RxClient = (function () {
     /**
      * @param {boolean} [force] Rollback transaction with all savepoints.
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @throws {RxClientError}
      */
     RxClient.prototype.rollback = function (force) {
         var _this = this;

@@ -134,7 +134,7 @@ suite('RxClient Adapter Unit tests', function () {
                 (rxClient : RxClient) => {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
-                    assert.equal(client.queries.length, 5);
+                    assert.lengthOf(client.queries, 5);
                     assert.deepEqual(client.queries.map((q : any) => q.query), [
                         'begin',
                         'savepoint point_1',
@@ -171,7 +171,7 @@ suite('RxClient Adapter Unit tests', function () {
                 (rxClient : RxClient) => {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
-                    assert.equal(client.queries.length, 7);
+                    assert.lengthOf(client.queries, 7);
                     assert.deepEqual(client.queries.map((q : any) => q.query), [
                         'begin',
                         'savepoint point_1',

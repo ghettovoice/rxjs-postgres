@@ -4,7 +4,6 @@
     "target": "es5",
     "module": "commonjs",
     "outDir": "dist/",
-    "noImplicitAny": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "newLine": "LF",

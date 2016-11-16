@@ -60,39 +60,41 @@ var RxPool = (function () {
         return Rx.Observable.fromPromise(this._pool.query(queryText, values));
     };
     /**
-     * @return {Rx.Observable<RxClient>}
+     * @return {Rx.Observable<RxPool>}
      */
     RxPool.prototype.begin = function () {
         var _this = this;
         var observable = this._tclient ?
             Rx.Observable.return(this._tclient) :
-            this.connect();
-        return observable.flatMap(function (client) {
-            _this._tclient = client;
-            return client.begin();
-        });
+            this.connect().doOnNext(function (rxClient) { return _this._tclient = rxClient; });
+        return observable.flatMap(function (rxClient) { return rxClient.begin(); })
+            .map(function () { return _this; });
     };
     /**
      * @param {boolean} [force] Commit transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @return {Rx.Observable<RxPool>}
+     * @throws {RxPoolError}
      */
     RxPool.prototype.commit = function (force) {
+        var _this = this;
         if (!this._tclient) {
             throw new errors_1.RxPoolError('Client with open transaction does not exists');
         }
-        return this._tclient.commit(force);
+        return this._tclient.commit(force)
+            .map(function () { return _this; });
     };
     /**
      * @param {boolean} [force] Rollback transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @return {Rx.Observable<RxPool>}
+     * @throws {RxPoolError}
      */
     RxPool.prototype.rollback = function (force) {
+        var _this = this;
         if (!this._tclient) {
             throw new errors_1.RxPoolError('Client with open transaction does not exists');
         }
-        return this._tclient.rollback(force);
+        return this._tclient.rollback(force)
+            .map(function () { return _this; });
     };
     return RxPool;
 }());

@@ -34,19 +34,19 @@ export default class RxPool {
      */
     query(queryText: string, values?: any[]): Rx.Observable<ResultSet>;
     /**
-     * @return {Rx.Observable<RxClient>}
+     * @return {Rx.Observable<RxPool>}
      */
-    begin(): Rx.Observable<RxClient>;
+    begin(): Rx.Observable<RxPool>;
     /**
      * @param {boolean} [force] Commit transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @return {Rx.Observable<RxPool>}
+     * @throws {RxPoolError}
      */
-    commit(force?: boolean): Rx.Observable<RxClient>;
+    commit(force?: boolean): Rx.Observable<RxPool>;
     /**
      * @param {boolean} [force] Rollback transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @return {Rx.Observable<RxPool>}
+     * @throws {RxPoolError}
      */
-    rollback(force?: boolean): Rx.Observable<RxClient>;
+    rollback(force?: boolean): Rx.Observable<RxPool>;
 }

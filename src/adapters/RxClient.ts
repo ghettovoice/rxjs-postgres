@@ -89,7 +89,6 @@ export default class RxClient implements Rx.Disposable {
 
     /**
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
      */
     begin() : Rx.Observable<RxClient> {
         assert(this._tlevel >= 0, 'Current transaction level >= 0');
@@ -110,7 +109,7 @@ export default class RxClient implements Rx.Disposable {
     /**
      * @param {boolean} [force] Commit transaction with all savepoints.
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @throws {RxClientError}
      */
     commit(force? : boolean) : Rx.Observable<RxClient> {
         assert(this._tlevel >= 0, 'Current transaction level >= 0');
@@ -133,7 +132,7 @@ export default class RxClient implements Rx.Disposable {
     /**
      * @param {boolean} [force] Rollback transaction with all savepoints.
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @throws {RxClientError}
      */
     rollback(force? : boolean) : Rx.Observable<RxClient> {
         assert(this._tlevel >= 0, 'Current transaction level >= 0');

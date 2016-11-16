@@ -34,19 +34,18 @@ export default class RxClient implements Rx.Disposable {
     query(queryText: string, values?: any[]): Rx.Observable<ResultSet>;
     /**
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
      */
     begin(): Rx.Observable<RxClient>;
     /**
      * @param {boolean} [force] Commit transaction with all savepoints.
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @throws {RxClientError}
      */
     commit(force?: boolean): Rx.Observable<RxClient>;
     /**
      * @param {boolean} [force] Rollback transaction with all savepoints.
      * @return {Rx.Observable<RxClient>}
-     * @throws {AssertionError}
+     * @throws {RxClientError}
      */
     rollback(force?: boolean): Rx.Observable<RxClient>;
 }
