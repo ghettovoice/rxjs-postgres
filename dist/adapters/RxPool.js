@@ -64,10 +64,15 @@ var RxPool = (function () {
      */
     RxPool.prototype.begin = function () {
         var _this = this;
-        var observable = this._tclient ?
-            Rx.Observable.return(this._tclient) :
-            this.connect().doOnNext(function (rxClient) { return _this._tclient = rxClient; });
-        return observable.flatMap(function (rxClient) { return rxClient.begin(); })
+        // const observable = this._tclient ?
+        //                    Rx.Observable.return<RxClient>(this._tclient) :
+        //                    this.connect().doOnNext((rxClient : RxClient) => this._tclient = rxClient);
+        //
+        // return observable.flatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+        //     .map<RxPool>(() => this);
+        // todo test test test
+        this._obs = this._obs || this.connect().doOnNext(function (rxClient) { return (console.log(1), _this._tclient = rxClient); }).shareReplay(1);
+        return this._obs.flatMap(function (rxClient) { return rxClient.begin(); })
             .map(function () { return _this; });
     };
     /**

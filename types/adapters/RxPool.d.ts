@@ -9,6 +9,7 @@ import { PgPool } from "../pg";
 export default class RxPool {
     private _pool;
     private _tclient;
+    private _obs;
     /**
      * @param {Pool} pool
      */

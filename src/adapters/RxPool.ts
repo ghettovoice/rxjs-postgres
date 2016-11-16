@@ -11,6 +11,7 @@ import { RxPoolError } from "../errors";
 export default class RxPool {
     private _pool : PgPool;
     private _tclient : RxClient;
+    private _obs : Rx.Observable<RxClient>;
 
     /**
      * @param {Pool} pool
@@ -68,11 +69,16 @@ export default class RxPool {
      * @return {Rx.Observable<RxPool>}
      */
     begin() : Rx.Observable<RxPool> {
-        const observable = this._tclient ?
-                           Rx.Observable.return<RxClient>(this._tclient) :
-                           this.connect().doOnNext((rxClient : RxClient) => this._tclient = rxClient);
+        // const observable = this._tclient ?
+        //                    Rx.Observable.return<RxClient>(this._tclient) :
+        //                    this.connect().doOnNext((rxClient : RxClient) => this._tclient = rxClient);
+        //
+        // return observable.flatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+        //     .map<RxPool>(() => this);
+        // todo test test test
+        this._obs = this._obs || this.connect().doOnNext((rxClient : RxClient) => (console.log(1),this._tclient = rxClient)).shareReplay(1);
 
-        return observable.flatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+        return this._obs.flatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
             .map<RxPool>(() => this);
     }
 
