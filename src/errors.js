@@ -32,7 +32,7 @@ export class RxClientError extends BaseError {
     constructor(message) {
         super(message);
         this.name = this.constructor.name;
-        this.message = message + 123;
+        this.message = message;
     }
 }
 

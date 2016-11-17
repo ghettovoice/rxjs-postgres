@@ -27,5 +27,4 @@ Object.keys(_errors).forEach(function (key) {
     }
   });
 });
-
 //# sourceMappingURL=index.js.map

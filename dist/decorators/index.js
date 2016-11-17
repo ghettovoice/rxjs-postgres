@@ -27,5 +27,4 @@ Object.keys(_rxclient).forEach(function (key) {
     }
   });
 });
-
 //# sourceMappingURL=index.js.map
