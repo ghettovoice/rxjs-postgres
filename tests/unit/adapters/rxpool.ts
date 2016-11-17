@@ -126,7 +126,7 @@ suite('RxPool Adapter Unit tests', function () {
         const pool = new PoolMock();
         const rxPool = new RxPool(<PgPool>pool);
 
-        assert.throw(() => rxPool.commit(), RxPoolError, 'Client with open transaction does not exists');
+        assert.throws(() => rxPool.commit(), RxPoolError, 'Client with open transaction does not exists');
         done();
         // Rx.Observable.merge<RxPool>(
         //     rxPool.begin(),
@@ -165,6 +165,6 @@ suite('RxPool Adapter Unit tests', function () {
         const pool = new PoolMock();
         const rxPool = new RxPool(<PgPool>pool);
 
-        assert.throw(() => rxPool.rollback(), RxPoolError, 'Client with open transaction does not exists');
+        assert.throws(() => rxPool.rollback(), RxPoolError, 'Client with open transaction does not exists');
     });
 });

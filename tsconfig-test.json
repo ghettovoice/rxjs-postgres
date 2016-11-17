@@ -5,10 +5,9 @@
     "module": "commonjs",
     "outDir": "tests-compiled/",
     "sourceMap": true,
-    "noImplicitAny": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "newLine": "lf",
+    "newLine": "LF",
     "pretty": true
   },
   "include": [

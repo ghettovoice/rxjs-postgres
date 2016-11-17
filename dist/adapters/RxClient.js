@@ -144,4 +144,8 @@ var RxClient = (function () {
     return RxClient;
 }());
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Standalone RxJs adapter for `pg.Client`.
+ */
 exports.default = RxClient;
+//# sourceMappingURL=RxClient.js.map

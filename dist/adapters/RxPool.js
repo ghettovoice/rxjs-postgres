@@ -104,4 +104,8 @@ var RxPool = (function () {
     return RxPool;
 }());
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Standalone RxJs adapter for `pg.Pool`.
+ */
 exports.default = RxPool;
+//# sourceMappingURL=RxPool.js.map

@@ -7,19 +7,25 @@
  * @license MIT
  * @copyright (c) 2016, Vladimir Vershinin
  */
+export declare class ExtendableError extends Error {
+    name: string;
+    message: string;
+    stack: string;
+    constructor(message: any);
+}
 /**
  * Error class for all client specific exceptions.
  */
-export declare class RxClientError extends Error {
+export declare class RxClientError extends ExtendableError {
+    message: any;
     name: string;
-    message: string;
-    constructor(message?: string);
+    constructor(message: any);
 }
 /**
  * Error class for all pool specific exceptions.
  */
 export declare class RxPoolError extends Error {
-    name: string;
     message: string;
-    constructor(message?: string);
+    name: string;
+    constructor(message: string);
 }

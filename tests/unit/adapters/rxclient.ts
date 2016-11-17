@@ -117,8 +117,8 @@ suite('RxClient Adapter Unit tests', function () {
     test('Test commit', function (done) {
         const client = new ClientMock();
         const rxClient = new RxClient(<PgClient>client);
-
-        assert.throw(() => rxClient.commit(), RxClientError, 'The transaction is not open on the client');
+        // todo WTF? Breaks with constructor checking
+        assert.throws(() => rxClient.commit(), 'The transaction is not open on the client');
 
         rxClient.connect()
             .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
@@ -152,7 +152,7 @@ suite('RxClient Adapter Unit tests', function () {
         const client = new ClientMock();
         const rxClient = new RxClient(<PgClient>client);
 
-        assert.throw(() => rxClient.commit(), RxClientError, 'The transaction is not open on the client');
+        assert.throws(() => rxClient.commit(), 'The transaction is not open on the client');
 
         rxClient.connect()
             .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
@@ -192,6 +192,13 @@ suite('RxClient Adapter Unit tests', function () {
         const rxClient = new RxClient(<PgClient>client);
         let errThrown = false;
 
+        try {
+            console.dir(RxClientError);
+            rxClient.commit();
+        } catch (err) {
+            console.log(err instanceof RxClientError, err instanceof Error);
+        }
+
         rxClient.begin()
             .concatMap<ResultSet, RxClient>(
                 (rxClient : RxClient) => rxClient.query('insert into t (q, w, e) values ($1, $2, $3)', [ 1, 2, 3 ]),
@@ -224,7 +231,8 @@ suite('RxClient Adapter Unit tests', function () {
             })
             .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
             .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
-            .catch((err : Error) => {
+            .catch((err : RxClientError) => {
+                assert.instanceOf(err, RxClientError);
                 assert.equal(err.message, 'The transaction is not open on the client');
                 errThrown = true;
 

@@ -8,4 +8,8 @@ function RxPool(options) {
     };
 }
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * RxJs decorator for `pg.Client`.
+ */
 exports.default = RxPool;
+//# sourceMappingURL=rxpool.js.map
