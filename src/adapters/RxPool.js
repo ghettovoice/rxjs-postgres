@@ -1,42 +1,45 @@
-import { Pool } from 'pg';
-import * as Rx from "rx";
-import RxClient from "./RxClient";
-import { RxPoolError } from "../errors";
+import pg from 'pg';
+import * as Rx from 'rx';
+import RxClient from './RxClient';
+import { RxPoolError } from '../errors';
 
 /**
  * Standalone RxJs adapter for `pg.Pool`.
  */
 export default class RxPool {
     /**
-     * @param {Pool} pool
+     * @param {pg.Pool} pool
      */
     constructor(pool) {
-        /* istanbul ignore if */
-        if (!(this instanceof RxPool)) {
-            return new RxPool(pool);
-        }
-
-        if (!(pool instanceof Pool)) {
+        if (!(pool instanceof pg.Pool)) {
             throw new RxPoolError('Pool must be instance of pg.Pool class');
         }
 
+        /**
+         * @type {pg.Pool}
+         * @private
+         */
         this._pool = pool;
-        this._tclient = undefined;
+        /**
+         * @type {Rx.ConnectableObservable<RxClient>}
+         * @private
+         */
+        this._tclientSource = undefined;
     }
 
+    /**
+     * @return {pg.Pool}
+     */
     get pool() {
         return this._pool;
-    }
-
-    get tclient() {
-        return this._tclient;
     }
 
     /**
      * @return {Rx.Observable<RxClient>}
      */
     connect() {
-        return Rx.Observable.fromPromise(this._pool.connect()).map(client => new RxClient(client));
+        return Rx.Observable.fromPromise(this._pool.connect())
+            .map(client => new RxClient(client));
     }
 
     /**
@@ -50,7 +53,8 @@ export default class RxPool {
      * @return {Rx.Observable<RxPool>}
      */
     end() {
-        return Rx.Observable.fromPromise(this._pool.end()).map(() => this);
+        return Rx.Observable.fromPromise(this._pool.end())
+            .map(() => this);
     }
 
     /**
@@ -66,16 +70,14 @@ export default class RxPool {
      * @return {Rx.Observable<RxPool>}
      */
     begin() {
-        // const observable = this._tclient ?
-        //                    Rx.Observable.return<RxClient>(this._tclient) :
-        //                    this.connect().doOnNext((rxClient : RxClient) => this._tclient = rxClient);
-        //
-        // return observable.flatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-        //     .map<RxPool>(() => this);
-        // todo test test test
-        this._obs = this._obs || this.connect().doOnNext(rxClient => (console.log(1), this._tclient = rxClient)).shareReplay(1);
+        if (!this._tclientSource) {
+            this._tclientSource = this.connect().shareReplay(1);
+        }
 
-        return this._obs.flatMap(rxClient => rxClient.begin()).map(() => this);
+        return this._tclientSource.flatMap(
+            rxClient => rxClient.begin(),
+            () => this
+        );
     }
 
     /**
@@ -84,11 +86,17 @@ export default class RxPool {
      * @throws {RxPoolError}
      */
     commit(force) {
-        if (!this._tclient) {
+        if (!this._tclientSource) {
             throw new RxPoolError('Client with open transaction does not exists');
         }
-
-        return this._tclient.commit(force).map(() => this);
+        // todo release when tlevel = 0
+        return this._tclientSource.flatMap(rxClient => rxClient.commit(force))
+            .do(rxClient => {
+                if (!rxClient.tlevel) {
+                    rxClient.release();
+                    this._tclientSource = null;
+                }
+            });
     }
 
     /**
@@ -97,10 +105,14 @@ export default class RxPool {
      * @throws {RxPoolError}
      */
     rollback(force) {
-        if (!this._tclient) {
+        if (!this._tclientSource) {
             throw new RxPoolError('Client with open transaction does not exists');
         }
-
-        return this._tclient.rollback(force).map(() => this);
+        // todo release when tlevel = 0
+        return this._tclientSource.flatMap(
+            rxClient => rxClient.rollback(force),
+            () => this
+        );
+        ;
     }
 }

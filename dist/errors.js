@@ -1,8 +1,15 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.RxPoolError = exports.RxClientError = undefined;
+
+var _es6Error = require('es6-error');
+
+var _es6Error2 = _interopRequireDefault(_es6Error);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -20,59 +27,27 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
  */
 
 /**
- * Base error class for extending
- */
-var BaseError = function (_Error) {
-  _inherits(BaseError, _Error);
-
-  /**
-   * @param {string} message
-   */
-  function BaseError(message) {
-    _classCallCheck(this, BaseError);
-
-    /** @type {string} */
-    var _this = _possibleConstructorReturn(this, (BaseError.__proto__ || Object.getPrototypeOf(BaseError)).call(this, message));
-
-    _this.name = _this.constructor.name;
-    /** @type {string | undefined} */
-    _this.message = message;
-    /** @type {string} */
-    _this.stack = new Error().stack;
-    return _this;
-  }
-
-  return BaseError;
-}(Error);
-
-/**
  * Error class for all client specific exceptions.
  */
+var RxClientError = exports.RxClientError = function (_ExtendableError) {
+  _inherits(RxClientError, _ExtendableError);
 
-
-var RxClientError = exports.RxClientError = function (_BaseError) {
-  _inherits(RxClientError, _BaseError);
-
-  function RxClientError(message) {
+  function RxClientError() {
     _classCallCheck(this, RxClientError);
 
-    var _this2 = _possibleConstructorReturn(this, (RxClientError.__proto__ || Object.getPrototypeOf(RxClientError)).call(this, message));
-
-    _this2.name = _this2.constructor.name;
-    _this2.message = message + 123;
-    return _this2;
+    return _possibleConstructorReturn(this, (RxClientError.__proto__ || Object.getPrototypeOf(RxClientError)).apply(this, arguments));
   }
 
   return RxClientError;
-}(BaseError);
+}(_es6Error2.default);
 
 /**
  * Error class for all pool specific exceptions.
  */
 
 
-var RxPoolError = exports.RxPoolError = function (_BaseError2) {
-  _inherits(RxPoolError, _BaseError2);
+var RxPoolError = exports.RxPoolError = function (_ExtendableError2) {
+  _inherits(RxPoolError, _ExtendableError2);
 
   function RxPoolError() {
     _classCallCheck(this, RxPoolError);
@@ -81,5 +56,5 @@ var RxPoolError = exports.RxPoolError = function (_BaseError2) {
   }
 
   return RxPoolError;
-}(BaseError);
+}(_es6Error2.default);
 //# sourceMappingURL=errors.js.map

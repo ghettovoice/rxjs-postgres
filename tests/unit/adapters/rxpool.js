@@ -1,13 +1,12 @@
-import { assert } from "chai";
-import * as Rx from "rx";
-import { PoolMock, ClientMock } from "../pgmock";
-import RxPool from "../../../src/adapters/RxPool";
-import RxClient from "../../../src/adapters/RxClient";
-import { RxPoolError } from "../../../src/errors";
-
+import { assert } from 'chai';
+import * as Rx from 'rx';
+import { PoolMock, ClientMock } from '../pgmock';
+import { RxPool, RxClient, RxPoolError } from '../../../src';
 
 suite('RxPool Adapter Unit tests', function () {
     test('Initialization', function () {
+        assert.throws(() => new RxPool({ query() {} }), RxPoolError, 'Pool must be instance of pg.Pool class');
+
         const pool = new PoolMock();
         const rxPool = new RxPool(pool);
 
@@ -22,32 +21,35 @@ suite('RxPool Adapter Unit tests', function () {
         Rx.Observable.merge(
             rxPool.connect(),
             rxPool.take()
-        ).subscribe(
-            rxClient => {
-                assert.lengthOf(pool.pool, 2);
-                assert.instanceOf(rxClient, RxClient);
-                assert.equal(rxClient.tlevel, 0);
-                assert.instanceOf(rxClient.client, ClientMock);
-                assert.isOk(pool.pool.indexOf(rxClient.client) !== -1);
-                assert.typeOf(rxClient.client.release, 'function');
-                assert.ok(rxClient.client.connected);
-            },
-            done,
-            done
-        );
+        )
+            .subscribe(
+                rxClient => {
+                    // assert.lengthOf(pool.pool_, 2);
+                    assert.strictEqual(pool.pool._count, 2);
+                    assert.instanceOf(rxClient, RxClient);
+                    assert.equal(rxClient.tlevel, 0);
+                    assert.instanceOf(rxClient.client, ClientMock);
+                    // assert.isOk(pool.pool_.includes(rxClient.client));
+                    assert.typeOf(rxClient.client.release, 'function');
+                    assert.ok(rxClient.client.connected);
+                },
+                done,
+                done
+            );
     });
 
     test('Test end', function (done) {
         const pool = new PoolMock();
         const rxPool = new RxPool(pool);
-
+        // FIXME timed out
         rxPool.connect()
             .doOnNext(rxClient => {
-                assert.strictEqual(pool.pool.length, 1);
+                // assert.lengthOf(pool.pool_, 1);
+                assert.strictEqual(pool.pool._count, 1);
                 assert.instanceOf(rxClient, RxClient);
                 assert.equal(rxClient.tlevel, 0);
                 assert.instanceOf(rxClient.client, ClientMock);
-                assert.ok(pool.pool[ 0 ] === rxClient.client);
+                // assert.ok(pool.pool_[ 0 ] === rxClient.client);
                 assert.typeOf(rxClient.client.release, 'function');
                 assert.ok(rxClient.client.connected);
             })
@@ -56,7 +58,7 @@ suite('RxPool Adapter Unit tests', function () {
                 rxPool_ => {
                     assert.instanceOf(rxPool_, RxPool);
                     assert.strictEqual(rxPool_, rxPool);
-                    assert.lengthOf(rxPool_.pool.pool, 0);
+                    assert.lengthOf(rxPool_.pool.pool_, 0);
                 },
                 done,
                 done
@@ -71,7 +73,8 @@ suite('RxPool Adapter Unit tests', function () {
             rxPool.query('select 1'),
             rxPool.query('select current_timestamp'),
             rxPool.query("select 'qwerty")
-        ).doOnNext(result => {
+        )
+            .doOnNext(result => {
                 assert.lengthOf(result.client.queries, 1);
             })
             .flatMap(
@@ -88,7 +91,8 @@ suite('RxPool Adapter Unit tests', function () {
                 },
                 done,
                 () => {
-                    assert.lengthOf(rxPool.pool.pool, 0);
+                    // assert.lengthOf(rxPool.pool.pool_, 0);
+                    assert.strictEqual(rxPool.pool.pool._count, 0);
                     done();
                 }
             );
@@ -99,20 +103,28 @@ suite('RxPool Adapter Unit tests', function () {
         const rxPool = new RxPool(pool);
 
         rxPool.begin()
-            .doOnNext(rxPool_ => {
-                assert.instanceOf(rxPool_, RxPool);
+            .do(rxPool_ => {
                 assert.strictEqual(rxPool_, rxPool);
-                assert.strictEqual(rxPool.tclient.tlevel, 1);
             })
-            .concatMap(rxPool_ => rxPool_.begin())
+            .flatMap(rxPool => rxPool.begin())
+            .flatMap(rxPool => rxPool.begin())
+            .do(rxPool_ => {
+                assert.strictEqual(rxPool_, rxPool);
+            })
+            .zip(
+                rxPool._tclientSource,
+                (rxPool_, rxClient) => ({ rxPool_, rxClient })
+            )
             .subscribe(
-                rxPool_ => {
-                    assert.strictEqual(rxPool_, rxPool);
-                    assert.equal(rxPool_.tclient.tlevel, 2);
-                    assert.lengthOf(rxPool_.tclient.client.queries, 2);
-                    assert.deepEqual(rxPool_.tclient.client.queries.map(q => q.query), [
+                ({ rxPool_, rxClient }) => {
+                    // assert.lengthOf(rxPool_.pool.pool_, 1);
+                    assert.strictEqual(rxPool_.pool.pool._count, 1);
+                    assert.equal(rxClient.tlevel, 3);
+                    assert.lengthOf(rxClient.client.queries, 3);
+                    assert.deepEqual(rxClient.client.queries.map(q => q.query), [
                         'begin',
-                        'savepoint point_1'
+                        'savepoint point_1',
+                        'savepoint point_2',
                     ]);
                 },
                 done,
@@ -125,38 +137,48 @@ suite('RxPool Adapter Unit tests', function () {
         const rxPool = new RxPool(pool);
 
         assert.throws(::rxPool.commit, RxPoolError, 'Client with open transaction does not exists');
-        done();
-        // Rx.Observable.merge<RxPool>(
-        //     rxPool.begin(),
-        //     rxPool.begin(),
-        //     rxPool.begin()
-        // ).doOnNext((rxPool_ : RxPool) => {
-        //     console.log(rxPool_.tclient);
-        // })/*.flatMap<RxPool>(() => {
-        //     console.log(rxPool.tclient);
-        //     return rxPool.commit();
-        // })
-        //     .doOnNext((rxPool_ : RxPool) => {
-        //         assert.instanceOf(rxPool_, RxPool);
-        //         assert.strictEqual(rxPool_, rxPool);
-        //         assert.strictEqual(rxPool_.tclient.tlevel, 1);
-        //     })
-        //     .flatMap<RxPool>(() => rxPool.commit(true))*/
-        //     .subscribe(
-        //         (rxPool_ : RxPool) => {
-        //             // assert.strictEqual(rxPool_.tclient.tlevel, 0);
-        //             // assert.lengthOf((<ClientMock>rxPool_.tclient.client).queries, 5);
-        //             // assert.deepEqual((<ClientMock>rxPool_.tclient.client).queries.map((q : any) => q.query), [
-        //             //     'begin',
-        //             //     'savepoint point_1',
-        //             //     'savepoint point_2',
-        //             //     'release savepoint point_2',
-        //             //     'commit'
-        //             // ]);
-        //         },
-        //         done,
-        //         done
-        //     );
+
+        rxPool.begin()
+            .flatMap(rxPool => rxPool.begin())
+            .flatMap(rxPool => rxPool.begin())
+            .zip(
+                rxPool._tclientSource,
+                (rxPool_, rxClient) => ({ rxPool_, rxClient })
+            )
+            .flatMap(
+                ({ rxPool_ }) => rxPool_.commit(),
+                obj => obj
+            )
+            .do(({ rxPool_, rxClient }) => {
+                assert.strictEqual(rxPool_, rxPool);
+                // assert.lengthOf(rxPool_.pool.pool_, 1);
+                assert.strictEqual(rxPool_.pool.pool._count, 1);
+                assert.strictEqual(rxClient.tlevel, 2);
+            })
+            .flatMap(
+                ({ rxPool_ }) => rxPool_.commit(true),
+                obj => obj
+            )
+            .subscribe(
+                ({ rxPool_, rxClient }) => {
+                    assert.throws(::rxPool_.commit, RxPoolError, 'Client with open transaction does not exists');
+                    // assert.lengthOf(rxPool_.pool.pool_, 0);
+                    assert.strictEqual(rxPool_.pool.pool._count, 0);
+                    assert.notOk(rxClient.connected);
+                    assert.ok(rxClient.released);
+                    assert.equal(rxClient.tlevel, 0);
+                    assert.lengthOf(rxClient.client.queries, 5);
+                    assert.deepEqual(rxClient.client.queries.map(q => q.query), [
+                        'begin',
+                        'savepoint point_1',
+                        'savepoint point_2',
+                        'release savepoint point_2',
+                        'commit'
+                    ]);
+                },
+                done,
+                done
+            );
     });
 
     test('Test rollback', function () {

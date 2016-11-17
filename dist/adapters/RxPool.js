@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -6,21 +6,23 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _pg = require("pg");
+var _pg = require('pg');
 
-var _rx = require("rx");
+var _pg2 = _interopRequireDefault(_pg);
+
+var _rx = require('rx');
 
 var Rx = _interopRequireWildcard(_rx);
 
-var _RxClient = require("./RxClient");
+var _RxClient = require('./RxClient');
 
 var _RxClient2 = _interopRequireDefault(_RxClient);
 
-var _errors = require("../errors");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+var _errors = require('../errors');
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -29,26 +31,34 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  */
 var RxPool = function () {
     /**
-     * @param {Pool} pool
+     * @param {pg.Pool} pool
      */
     function RxPool(pool) {
         _classCallCheck(this, RxPool);
 
-        /* istanbul ignore if */
-        if (!(this instanceof RxPool)) {
-            return new RxPool(pool);
-        }
-
-        if (!(pool instanceof _pg.Pool)) {
+        if (!(pool instanceof _pg2.default.Pool)) {
             throw new _errors.RxPoolError('Pool must be instance of pg.Pool class');
         }
 
+        /**
+         * @type {pg.Pool}
+         * @private
+         */
         this._pool = pool;
-        this._tclient = undefined;
+        /**
+         * @type {Rx.ConnectableObservable<RxClient>}
+         * @private
+         */
+        this._tclientSource = undefined;
     }
 
+    /**
+     * @return {pg.Pool}
+     */
+
+
     _createClass(RxPool, [{
-        key: "connect",
+        key: 'connect',
 
 
         /**
@@ -65,7 +75,7 @@ var RxPool = function () {
          */
 
     }, {
-        key: "take",
+        key: 'take',
         value: function take() {
             return this.connect();
         }
@@ -75,7 +85,7 @@ var RxPool = function () {
          */
 
     }, {
-        key: "end",
+        key: 'end',
         value: function end() {
             var _this = this;
 
@@ -91,7 +101,7 @@ var RxPool = function () {
          */
 
     }, {
-        key: "query",
+        key: 'query',
         value: function query(queryText, values) {
             return Rx.Observable.fromPromise(this._pool.query(queryText, values));
         }
@@ -101,24 +111,17 @@ var RxPool = function () {
          */
 
     }, {
-        key: "begin",
+        key: 'begin',
         value: function begin() {
             var _this2 = this;
 
-            // const observable = this._tclient ?
-            //                    Rx.Observable.return<RxClient>(this._tclient) :
-            //                    this.connect().doOnNext((rxClient : RxClient) => this._tclient = rxClient);
-            //
-            // return observable.flatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            //     .map<RxPool>(() => this);
-            // todo test test test
-            this._obs = this._obs || this.connect().doOnNext(function (rxClient) {
-                return console.log(1), _this2._tclient = rxClient;
-            }).shareReplay(1);
+            if (!this._tclientSource) {
+                this._tclientSource = this.connect().shareReplay(1);
+            }
 
-            return this._obs.flatMap(function (rxClient) {
+            return this._tclientSource.flatMap(function (rxClient) {
                 return rxClient.begin();
-            }).map(function () {
+            }, function () {
                 return _this2;
             });
         }
@@ -130,16 +133,21 @@ var RxPool = function () {
          */
 
     }, {
-        key: "commit",
+        key: 'commit',
         value: function commit(force) {
             var _this3 = this;
 
-            if (!this._tclient) {
+            if (!this._tclientSource) {
                 throw new _errors.RxPoolError('Client with open transaction does not exists');
             }
-
-            return this._tclient.commit(force).map(function () {
-                return _this3;
+            // todo release when tlevel = 0
+            return this._tclientSource.flatMap(function (rxClient) {
+                return rxClient.commit(force);
+            }).do(function (rxClient) {
+                if (!rxClient.tlevel) {
+                    rxClient.release();
+                    _this3._tclientSource = null;
+                }
             });
         }
 
@@ -150,27 +158,25 @@ var RxPool = function () {
          */
 
     }, {
-        key: "rollback",
+        key: 'rollback',
         value: function rollback(force) {
             var _this4 = this;
 
-            if (!this._tclient) {
+            if (!this._tclientSource) {
                 throw new _errors.RxPoolError('Client with open transaction does not exists');
             }
-
-            return this._tclient.rollback(force).map(function () {
+            // todo release when tlevel = 0
+            return this._tclientSource.flatMap(function (rxClient) {
+                return rxClient.rollback(force);
+            }, function () {
                 return _this4;
             });
+            ;
         }
     }, {
-        key: "pool",
+        key: 'pool',
         get: function get() {
             return this._pool;
-        }
-    }, {
-        key: "tclient",
-        get: function get() {
-            return this._tclient;
         }
     }]);
 

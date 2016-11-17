@@ -1,3 +1,4 @@
+import ExtendableError from 'es6-error';
 /**
  * Library errors module.
  *
@@ -8,36 +9,13 @@
  */
 
 /**
- * Base error class for extending
- */
-class BaseError extends Error {
-    /**
-     * @param {string} message
-     */
-    constructor(message) {
-        super(message);
-        /** @type {string} */
-        this.name = this.constructor.name;
-        /** @type {string | undefined} */
-        this.message = message;
-        /** @type {string} */
-        this.stack = new Error().stack;
-    }
-}
-
-/**
  * Error class for all client specific exceptions.
  */
-export class RxClientError extends BaseError {
-    constructor(message) {
-        super(message);
-        this.name = this.constructor.name;
-        this.message = message;
-    }
+export class RxClientError extends ExtendableError {
 }
 
 /**
  * Error class for all pool specific exceptions.
  */
-export class RxPoolError extends BaseError {
+export class RxPoolError extends ExtendableError {
 }

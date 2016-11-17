@@ -12,6 +12,8 @@ var _assert2 = _interopRequireDefault(_assert);
 
 var _pg = require('pg');
 
+var _pg2 = _interopRequireDefault(_pg);
+
 var _rx = require('rx');
 
 var Rx = _interopRequireWildcard(_rx);
@@ -29,24 +31,36 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  */
 var RxClient = function () {
     /**
-     * @param {Client} client
+     * @param {pg.Client} client
      */
     function RxClient(client) {
         _classCallCheck(this, RxClient);
 
-        /* istanbul ignore if */
-        if (!(this instanceof RxClient)) {
-            return new RxClient(client);
-        }
-
-        if (!(client instanceof _pg.Client)) {
+        if (!(client instanceof _pg2.default.Client)) {
             throw new _errors.RxClientError('Client must be instance of pg.Client class');
         }
 
+        /**
+         * @type {pg.Client}
+         * @private
+         */
         this._client = client;
+        /**
+         * @type {number}
+         * @private
+         */
         this._tlevel = 0;
+        /**
+         * @type {boolean}
+         * @private
+         */
         this._disposed = false;
     }
+
+    /**
+     * @type {pg.Client}
+     */
+
 
     _createClass(RxClient, [{
         key: 'release',
@@ -203,16 +217,31 @@ var RxClient = function () {
         get: function get() {
             return this._client;
         }
+
+        /**
+         * @type {number}
+         */
+
     }, {
         key: 'tlevel',
         get: function get() {
             return this._tlevel;
         }
+
+        /**
+         * @type {boolean}
+         */
+
     }, {
         key: 'isDisposed',
         get: function get() {
             return this._disposed;
         }
+
+        /**
+         * @return {boolean}
+         */
+
     }, {
         key: 'connected',
         get: function get() {

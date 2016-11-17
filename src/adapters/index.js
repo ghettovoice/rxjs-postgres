@@ -6,5 +6,6 @@
  * @license MIT
  * @copyright (c) 2016, Vladimir Vershinin
  */
-export * from './RxPool';
-export * from './RxClient';
+
+export RxPool from './RxPool';
+export RxClient from './RxClient';

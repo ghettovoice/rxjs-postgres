@@ -6,5 +6,6 @@
  * @license MIT
  * @copyright (c) 2016, Vladimir Vershinin
  */
-export * from './rxpool';
-export * from './rxclient';
+
+export rxPool from './rxpool';
+export rxClient from './rxclient';

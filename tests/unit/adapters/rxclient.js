@@ -1,11 +1,12 @@
 import { assert } from "chai";
 import { Rx } from "../../boot";
 import { ClientMock } from "../pgmock";
-import RxClient from "../../../src/adapters/RxClient";
-import { RxClientError } from "../../../src/errors";
+import { RxClient, RxClientError } from "../../../src";
 
 suite('RxClient Adapter Unit tests', function () {
     test('Test initialization', function () {
+        assert.throws(() => new RxClient({ query() {} }), RxClientError, 'Client must be instance of pg.Client class');
+
         const client = new ClientMock();
         const rxClient = new RxClient(client);
 
@@ -85,16 +86,16 @@ suite('RxClient Adapter Unit tests', function () {
         const rxClient = new RxClient(client);
 
         rxClient.begin()
-            .doOnNext(rxClient => {
+            .do(rxClient => {
                 assert.instanceOf(rxClient, RxClient);
                 assert.instanceOf(rxClient.client, ClientMock);
                 assert.strictEqual(rxClient.tlevel, 1);
             })
-            .concatMap(rxClient => rxClient.begin())
-            .doOnNext(rxClient => {
+            .flatMap(rxClient => rxClient.begin())
+            .do(rxClient => {
                 assert.strictEqual(rxClient.tlevel, 2);
             })
-            .concatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.begin())
             .subscribe(
                 rxClient => {
                     assert.ok(client.connected);
@@ -114,23 +115,24 @@ suite('RxClient Adapter Unit tests', function () {
     test('Test commit', function (done) {
         const client = new ClientMock();
         const rxClient = new RxClient(client);
-        // todo WTF? Breaks with constructor checking
+
         assert.throws(::rxClient.commit, RxClientError, 'The transaction is not open on the client');
 
         rxClient.connect()
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(rxClient => rxClient.commit())
-            .doOnNext(rxClient => {
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.commit())
+            .do(rxClient => {
                 assert.instanceOf(rxClient, RxClient);
                 assert.instanceOf(rxClient.client, ClientMock);
+                assert.strictEqual(rxClient.tlevel, 2);
             })
-            .concatMap(rxClient => rxClient.commit(true))
+            .flatMap(rxClient => rxClient.commit(true))
             .subscribe(
                 rxClient => {
                     assert.ok(client.connected);
-                    assert.equal(rxClient.tlevel, 0);
+                    assert.strictEqual(rxClient.tlevel, 0);
                     assert.lengthOf(client.queries, 5);
                     assert.deepEqual(client.queries.map(q => q.query), [
                         'begin',
@@ -149,21 +151,21 @@ suite('RxClient Adapter Unit tests', function () {
         const client = new ClientMock();
         const rxClient = new RxClient(client);
 
-        assert.throws(::rxClient.commit, 'The transaction is not open on the client');
+        assert.throws(::rxClient.commit, RxClientError, 'The transaction is not open on the client');
 
         rxClient.connect()
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(rxClient => rxClient.rollback())
-            .doOnNext(rxClient => {
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(rxClient => rxClient.rollback())
+            .do(rxClient => {
                 assert.instanceOf(rxClient, RxClient);
                 assert.instanceOf(rxClient.client, ClientMock);
                 assert.strictEqual(rxClient.tlevel, 3);
             })
-            .concatMap(rxClient => rxClient.rollback())
-            .concatMap(rxClient => rxClient.rollback(true))
+            .flatMap(rxClient => rxClient.rollback())
+            .flatMap(rxClient => rxClient.rollback(true))
             .subscribe(
                 rxClient => {
                     assert.ok(client.connected);
@@ -189,45 +191,38 @@ suite('RxClient Adapter Unit tests', function () {
         const rxClient = new RxClient(client);
         let errThrown = false;
 
-        try {
-            console.dir(RxClientError);
-            rxClient.commit();
-        } catch (err) {
-            console.log(err instanceof RxClientError, err instanceof Error);
-        }
-
         rxClient.begin()
-            .concatMap(
+            .flatMap(
                 rxClient => rxClient.query('insert into t (q, w, e) values ($1, $2, $3)', [ 1, 2, 3 ]),
                 rxClient => rxClient
             )
-            .doOnNext(rxClient => {
+            .do(rxClient => {
                 assert.strictEqual(rxClient.tlevel, 1);
                 assert.deepEqual(rxClient.client.queries[ 1 ], {
                     query: 'insert into t (q, w, e) values ($1, $2, $3)',
                     args: [ 1, 2, 3 ]
                 });
             })
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(
                 rxClient => rxClient.query('delete from t where id = 100500'),
                 rxClient => rxClient
             )
-            .concatMap(rxClient => rxClient.commit())
-            .doOnNext(rxClient => {
+            .flatMap(rxClient => rxClient.commit())
+            .do(rxClient => {
                 assert.equal(rxClient.tlevel, 1);
             })
-            .concatMap(rxClient => rxClient.begin())
-            .concatMap(
+            .flatMap(rxClient => rxClient.begin())
+            .flatMap(
                 rxClient => rxClient.query('update t set id = id'),
                 rxClient => rxClient
             )
-            .concatMap(rxClient => rxClient.rollback())
-            .doOnNext(rxClient => {
+            .flatMap(rxClient => rxClient.rollback())
+            .do(rxClient => {
                 assert.strictEqual(rxClient.tlevel, 1);
             })
-            .concatMap(rxClient => rxClient.rollback())
-            .concatMap(rxClient => rxClient.rollback())
+            .flatMap(rxClient => rxClient.rollback())
+            .flatMap(rxClient => rxClient.rollback())
             .catch(err => {
                 assert.instanceOf(err, RxClientError);
                 assert.equal(err.message, 'The transaction is not open on the client');

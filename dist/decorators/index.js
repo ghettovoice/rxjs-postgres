@@ -3,28 +3,26 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.rxClient = exports.rxPool = undefined;
 
 var _rxpool = require('./rxpool');
 
-Object.keys(_rxpool).forEach(function (key) {
-  if (key === "default" || key === "__esModule") return;
-  Object.defineProperty(exports, key, {
-    enumerable: true,
-    get: function get() {
-      return _rxpool[key];
-    }
-  });
-});
+var _rxpool2 = _interopRequireDefault(_rxpool);
 
 var _rxclient = require('./rxclient');
 
-Object.keys(_rxclient).forEach(function (key) {
-  if (key === "default" || key === "__esModule") return;
-  Object.defineProperty(exports, key, {
-    enumerable: true,
-    get: function get() {
-      return _rxclient[key];
-    }
-  });
-});
+var _rxclient2 = _interopRequireDefault(_rxclient);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.rxPool = _rxpool2.default; /**
+                                    * RxJs ES decorators.
+                                    *
+                                    * @package rxjs-postgres
+                                    * @author Vladimir Vershinin
+                                    * @license MIT
+                                    * @copyright (c) 2016, Vladimir Vershinin
+                                    */
+
+exports.rxClient = _rxclient2.default;
 //# sourceMappingURL=index.js.map

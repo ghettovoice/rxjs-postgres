@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Client } from 'pg';
+import pg from 'pg';
 import * as Rx from 'rx';
 import { RxClientError } from '../errors';
 
@@ -8,35 +8,54 @@ import { RxClientError } from '../errors';
  */
 export default class RxClient {
     /**
-     * @param {Client} client
+     * @param {pg.Client} client
      */
     constructor(client) {
-        /* istanbul ignore if */
-        if (!(this instanceof RxClient)) {
-            return new RxClient(client);
-        }
-
-        if (!(client instanceof Client)) {
+        if (!(client instanceof pg.Client)) {
             throw new RxClientError('Client must be instance of pg.Client class');
         }
 
+        /**
+         * @type {pg.Client}
+         * @private
+         */
         this._client = client;
+        /**
+         * @type {number}
+         * @private
+         */
         this._tlevel = 0;
+        /**
+         * @type {boolean}
+         * @private
+         */
         this._disposed = false;
     }
 
+    /**
+     * @type {pg.Client}
+     */
     get client() {
         return this._client;
     }
 
+    /**
+     * @type {number}
+     */
     get tlevel() {
         return this._tlevel;
     }
 
+    /**
+     * @type {boolean}
+     */
     get isDisposed() {
         return this._disposed;
     }
 
+    /**
+     * @return {boolean}
+     */
     get connected() {
         return this._client.connection.stream.readyState === 'open';
     }
