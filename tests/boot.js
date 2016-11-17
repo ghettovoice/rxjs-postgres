@@ -4,7 +4,7 @@ import * as Rx from "rx";
  */
 
 // Enable RX debugging
-(Rx.config as any).longStackSupport = true;
+Rx.config.longStackSupport = true;
 
 export {
     Rx

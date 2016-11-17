@@ -8,16 +8,17 @@
     "test": "tests"
   },
   "scripts": {
-    "test:compile": "tsc -p tsconfig-test.json",
+    "babel": "babel",
+    "build": "rm -rf dist && babel --source-maps -d dist src",
     "test:remap-json": "remap-istanbul -i coverage/coverage.json -o coverage/coverage-remap.json",
     "test:remap-html": "remap-istanbul -i coverage/coverage.json -o coverage/remap-report -t html",
     "test:remap-lcov": "remap-istanbul -i coverage/coverage.json -o coverage/lcov-remap.info -t lcovonly",
     "test:remap": "npm run test:remap-json && npm run test:remap-html  && npm run test:remap-lcov",
-    "test:istanbul": "istanbul cover _mocha -- -u tdd 'tests-compiled/tests/**/*.js'",
+    "test:istanbul": "istanbul cover _mocha -- --require babel-register -u tdd 'tests/**/*.js'",
     "test:coveralls": "cat coverage/lcov-remap.info | coveralls ",
-    "test:cov": "rm -rf coverage && npm run test:compile && npm run test:istanbul && npm run test:remap && rm -rf tests-compiled",
-    "test:mocha": "npm run test:compile && mocha -u tdd 'tests-compiled/tests/**/*.js' && rm -rf tests-compiled",
-    "test": "npm run test:cov"
+    "test:cover": "rm -rf coverage && npm run test:istanbul && npm run test:remap",
+    "test:mocha": "mocha --require babel-register -u tdd 'tests/**/*.js'",
+    "test": "npm run test:cover"
   },
   "repository": {
     "type": "git",
@@ -36,19 +37,17 @@
   },
   "homepage": "https://github.com/ghettovoice/rxjs-postgres",
   "devDependencies": {
-    "@types/chai": "^3.4.34",
-    "@types/es6-shim": "^0.31.32",
-    "@types/mocha": "^2.2.33",
-    "@types/node": "^6.0.48",
-    "@types/sinon": "^1.16.32",
+    "babel": "^6.5.2",
+    "babel-cli": "^6.18.0",
+    "babel-core": "^6.18.2",
+    "babel-preset-latest": "^6.16.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "babel-register": "^6.18.0",
     "chai": "^3.5.0",
     "coveralls": "^2.11.15",
     "istanbul": "^0.4.5",
     "mocha": "^3.1.2",
-    "remap-istanbul": "^0.7.0",
-    "sinon": "^1.17.6",
-    "typescript": "^2.0.10",
-    "typings": "^2.0.0"
+    "remap-istanbul": "^0.7.0"
   },
   "dependencies": {
     "pg": "^6.1.0",

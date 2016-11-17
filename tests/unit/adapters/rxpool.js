@@ -3,15 +3,13 @@ import * as Rx from "rx";
 import { PoolMock, ClientMock } from "../pgmock";
 import RxPool from "../../../src/adapters/RxPool";
 import RxClient from "../../../src/adapters/RxClient";
-import { ResultSet } from "pg";
 import { RxPoolError } from "../../../src/errors";
-import { PgPool } from "../../../src/pg";
 
 
 suite('RxPool Adapter Unit tests', function () {
     test('Initialization', function () {
         const pool = new PoolMock();
-        const rxPool = new RxPool(<PgPool>pool);
+        const rxPool = new RxPool(pool);
 
         assert.strictEqual(rxPool.pool, pool);
         assert.isUndefined(rxPool.tclient);
@@ -19,20 +17,20 @@ suite('RxPool Adapter Unit tests', function () {
 
     test('Test connect / take', function (done) {
         const pool = new PoolMock();
-        const rxPool = new RxPool(<PgPool>pool);
+        const rxPool = new RxPool(pool);
 
-        Rx.Observable.merge<RxClient>(
+        Rx.Observable.merge(
             rxPool.connect(),
             rxPool.take()
         ).subscribe(
-            (rxClient : RxClient) => {
-                assert.strictEqual(pool.pool.length, 2);
+            rxClient => {
+                assert.lengthOf(pool.pool, 2);
                 assert.instanceOf(rxClient, RxClient);
                 assert.equal(rxClient.tlevel, 0);
                 assert.instanceOf(rxClient.client, ClientMock);
-                assert.isOk(pool.pool.indexOf(<ClientMock>rxClient.client) !== -1);
-                assert.typeOf((<ClientMock>rxClient.client).release, 'function');
-                assert.ok((<ClientMock>rxClient.client).connected);
+                assert.isOk(pool.pool.indexOf(rxClient.client) !== -1);
+                assert.typeOf(rxClient.client.release, 'function');
+                assert.ok(rxClient.client.connected);
             },
             done,
             done
@@ -41,24 +39,24 @@ suite('RxPool Adapter Unit tests', function () {
 
     test('Test end', function (done) {
         const pool = new PoolMock();
-        const rxPool = new RxPool(<PgPool>pool);
+        const rxPool = new RxPool(pool);
 
         rxPool.connect()
-            .doOnNext((rxClient : RxClient) => {
+            .doOnNext(rxClient => {
                 assert.strictEqual(pool.pool.length, 1);
                 assert.instanceOf(rxClient, RxClient);
                 assert.equal(rxClient.tlevel, 0);
                 assert.instanceOf(rxClient.client, ClientMock);
                 assert.ok(pool.pool[ 0 ] === rxClient.client);
-                assert.typeOf((<ClientMock>rxClient.client).release, 'function');
-                assert.ok((<ClientMock>rxClient.client).connected);
+                assert.typeOf(rxClient.client.release, 'function');
+                assert.ok(rxClient.client.connected);
             })
-            .concatMap<RxPool>(() => rxPool.end())
+            .concatMap(() => rxPool.end())
             .subscribe(
-                (rxPool_ : RxPool) => {
+                rxPool_ => {
                     assert.instanceOf(rxPool_, RxPool);
                     assert.strictEqual(rxPool_, rxPool);
-                    assert.strictEqual((<PoolMock>rxPool_.pool).pool.length, 0);
+                    assert.lengthOf(rxPool_.pool.pool, 0);
                 },
                 done,
                 done
@@ -67,22 +65,22 @@ suite('RxPool Adapter Unit tests', function () {
 
     test('Test query', function (done) {
         const pool = new PoolMock();
-        const rxPool = new RxPool(<PgPool>pool);
+        const rxPool = new RxPool(pool);
 
-        Rx.Observable.merge<ResultSet>(
+        Rx.Observable.merge(
             rxPool.query('select 1'),
             rxPool.query('select current_timestamp'),
             rxPool.query("select 'qwerty")
-        ).doOnNext((result : any) => {
+        ).doOnNext(result => {
                 assert.lengthOf(result.client.queries, 1);
             })
-            .flatMap<any, any>(
-                (result : any) => Rx.Observable.fromEvent<void>(result.client, 'end'),
-                (result : any) => result
+            .flatMap(
+                result => Rx.Observable.fromEvent(result.client, 'end'),
+                result => result
             )
             .take(3)
             .subscribe(
-                (result : any) => {
+                result => {
                     assert.typeOf(result, 'object');
                     assert.ok(Array.isArray(result.rows));
                     assert.ok(result.client.released);
@@ -90,7 +88,7 @@ suite('RxPool Adapter Unit tests', function () {
                 },
                 done,
                 () => {
-                    assert.lengthOf((<PoolMock>rxPool.pool).pool, 0);
+                    assert.lengthOf(rxPool.pool.pool, 0);
                     done();
                 }
             );
@@ -98,21 +96,21 @@ suite('RxPool Adapter Unit tests', function () {
 
     test('Test begin', function (done) {
         const pool = new PoolMock();
-        const rxPool = new RxPool(<PgPool>pool);
+        const rxPool = new RxPool(pool);
 
         rxPool.begin()
-            .doOnNext((rxPool_ : RxPool) => {
+            .doOnNext(rxPool_ => {
                 assert.instanceOf(rxPool_, RxPool);
                 assert.strictEqual(rxPool_, rxPool);
                 assert.strictEqual(rxPool.tclient.tlevel, 1);
             })
-            .concatMap<RxPool>((rxPool_ : RxPool) => rxPool_.begin())
+            .concatMap(rxPool_ => rxPool_.begin())
             .subscribe(
-                (rxPool_ : RxPool) => {
+                rxPool_ => {
                     assert.strictEqual(rxPool_, rxPool);
                     assert.equal(rxPool_.tclient.tlevel, 2);
-                    assert.lengthOf((<ClientMock>rxPool_.tclient.client).queries, 2);
-                    assert.deepEqual((<ClientMock>rxPool_.tclient.client).queries.map((q : any) => q.query), [
+                    assert.lengthOf(rxPool_.tclient.client.queries, 2);
+                    assert.deepEqual(rxPool_.tclient.client.queries.map(q => q.query), [
                         'begin',
                         'savepoint point_1'
                     ]);
@@ -124,9 +122,9 @@ suite('RxPool Adapter Unit tests', function () {
 
     test('Test commit', function (done) {
         const pool = new PoolMock();
-        const rxPool = new RxPool(<PgPool>pool);
+        const rxPool = new RxPool(pool);
 
-        assert.throws(() => rxPool.commit(), RxPoolError, 'Client with open transaction does not exists');
+        assert.throws(::rxPool.commit, RxPoolError, 'Client with open transaction does not exists');
         done();
         // Rx.Observable.merge<RxPool>(
         //     rxPool.begin(),
@@ -163,8 +161,8 @@ suite('RxPool Adapter Unit tests', function () {
 
     test('Test rollback', function () {
         const pool = new PoolMock();
-        const rxPool = new RxPool(<PgPool>pool);
+        const rxPool = new RxPool(pool);
 
-        assert.throws(() => rxPool.rollback(), RxPoolError, 'Client with open transaction does not exists');
+        assert.throws(::rxPool.rollback, RxPoolError, 'Client with open transaction does not exists');
     });
 });

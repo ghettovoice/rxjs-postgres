@@ -1,1 +1,1 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":"AAAA;;;;;;;GAOG;;;;;AAGH,8BAAyB"}
+{"version":3,"sources":["../src/index.js"],"names":[],"mappings":";;;;;;;;AASA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;;;AACA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA","file":"index.js","sourcesContent":["/**\n * RxJs Postgres decorator.\n *\n * @package rxjs-postgres\n * @author Vladimir Vershinin\n * @license MIT\n * @copyright (c) 2016, Vladimir Vershinin\n */\n\nexport * from './adapters';\nexport * from './errors';\n"]}

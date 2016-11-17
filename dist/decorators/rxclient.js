@@ -1,15 +1,20 @@
 "use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = RxClient;
 /**
  * RxJs decorator for `pg.Client`.
+ *
+ * @param {Object} [options]
+ * @return {Function}
  */
-function RxClient(options) {
+function RxClient() {
+    var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
     return function (Client) {
         return Client;
     };
 }
-Object.defineProperty(exports, "__esModule", { value: true });
-/**
- * RxJs decorator for `pg.Client`.
- */
-exports.default = RxClient;
 //# sourceMappingURL=rxclient.js.map

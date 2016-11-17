@@ -1,16 +1,13 @@
 import { assert } from "chai";
-import { ResultSet } from "pg";
 import { Rx } from "../../boot";
 import { ClientMock } from "../pgmock";
 import RxClient from "../../../src/adapters/RxClient";
 import { RxClientError } from "../../../src/errors";
-import { PgClient } from "../../../src/pg";
-
 
 suite('RxClient Adapter Unit tests', function () {
     test('Test initialization', function () {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
 
         assert.strictEqual(rxClient.client, client);
         assert.equal(rxClient.tlevel, 0);
@@ -19,11 +16,11 @@ suite('RxClient Adapter Unit tests', function () {
 
     test('Test connect', function (done) {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
 
         rxClient.connect()
             .subscribe(
-                (rxClient : any) => {
+                rxClient => {
                     assert.instanceOf(rxClient, RxClient);
                     assert.ok(rxClient.connected);
                     assert.instanceOf(rxClient.client, ClientMock);
@@ -37,12 +34,12 @@ suite('RxClient Adapter Unit tests', function () {
 
     test('Test end', function (done) {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
 
         rxClient.connect()
-            .flatMap<RxClient>((rxClient : RxClient) => rxClient.end())
+            .flatMap(rxClient => rxClient.end())
             .subscribe(
-                (rxClient : any) => {
+                rxClient => {
                     assert.instanceOf(rxClient, RxClient);
                     assert.instanceOf(rxClient.client, ClientMock);
                     assert.notOk(client.connected);
@@ -55,19 +52,19 @@ suite('RxClient Adapter Unit tests', function () {
 
     test('Test query', function (done) {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
         let i = 0;
 
-        Rx.Observable.merge<ResultSet>(
+        Rx.Observable.merge(
             rxClient.query('select 1'),
             rxClient.query('select current_timestamp'),
             rxClient.query("select 'qwerty")
         ).subscribe(
-            (res : any) => {
+            res => {
                 assert.typeOf(res, 'object');
                 assert.ok(Array.isArray(res.rows));
                 assert.equal(client.queries.length, 3);
-                assert.deepEqual(client.queries.map((q : any) => q.query), [
+                assert.deepEqual(client.queries.map(q => q.query), [
                     'select 1',
                     'select current_timestamp',
                     "select 'qwerty"
@@ -85,25 +82,25 @@ suite('RxClient Adapter Unit tests', function () {
 
     test('Test begin', function (done) {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
 
         rxClient.begin()
-            .doOnNext((rxClient : any) => {
+            .doOnNext(rxClient => {
                 assert.instanceOf(rxClient, RxClient);
                 assert.instanceOf(rxClient.client, ClientMock);
                 assert.strictEqual(rxClient.tlevel, 1);
             })
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .doOnNext((rxClient : RxClient) => {
+            .concatMap(rxClient => rxClient.begin())
+            .doOnNext(rxClient => {
                 assert.strictEqual(rxClient.tlevel, 2);
             })
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
+            .concatMap(rxClient => rxClient.begin())
             .subscribe(
-                (rxClient : RxClient) => {
+                rxClient => {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 3);
                     assert.equal(client.queries.length, 3);
-                    assert.deepEqual(client.queries.map((q : any) => q.query), [
+                    assert.deepEqual(client.queries.map(q => q.query), [
                         'begin',
                         'savepoint point_1',
                         'savepoint point_2'
@@ -116,26 +113,26 @@ suite('RxClient Adapter Unit tests', function () {
 
     test('Test commit', function (done) {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
         // todo WTF? Breaks with constructor checking
-        assert.throws(() => rxClient.commit(), 'The transaction is not open on the client');
+        assert.throws(::rxClient.commit, RxClientError, 'The transaction is not open on the client');
 
         rxClient.connect()
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.commit())
-            .doOnNext((rxClient : RxClient) => {
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(rxClient => rxClient.commit())
+            .doOnNext(rxClient => {
                 assert.instanceOf(rxClient, RxClient);
                 assert.instanceOf(rxClient.client, ClientMock);
             })
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.commit(true))
+            .concatMap(rxClient => rxClient.commit(true))
             .subscribe(
-                (rxClient : RxClient) => {
+                rxClient => {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
                     assert.lengthOf(client.queries, 5);
-                    assert.deepEqual(client.queries.map((q : any) => q.query), [
+                    assert.deepEqual(client.queries.map(q => q.query), [
                         'begin',
                         'savepoint point_1',
                         'savepoint point_2',
@@ -150,29 +147,29 @@ suite('RxClient Adapter Unit tests', function () {
 
     test('Test rollback', function (done) {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
 
-        assert.throws(() => rxClient.commit(), 'The transaction is not open on the client');
+        assert.throws(::rxClient.commit, 'The transaction is not open on the client');
 
         rxClient.connect()
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
-            .doOnNext((rxClient : any) => {
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(rxClient => rxClient.rollback())
+            .doOnNext(rxClient => {
                 assert.instanceOf(rxClient, RxClient);
                 assert.instanceOf(rxClient.client, ClientMock);
                 assert.strictEqual(rxClient.tlevel, 3);
             })
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback(true))
+            .concatMap(rxClient => rxClient.rollback())
+            .concatMap(rxClient => rxClient.rollback(true))
             .subscribe(
-                (rxClient : RxClient) => {
+                rxClient => {
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
                     assert.lengthOf(client.queries, 7);
-                    assert.deepEqual(client.queries.map((q : any) => q.query), [
+                    assert.deepEqual(client.queries.map(q => q.query), [
                         'begin',
                         'savepoint point_1',
                         'savepoint point_2',
@@ -189,7 +186,7 @@ suite('RxClient Adapter Unit tests', function () {
 
     test('Test query/ begin / commit / rollback all together', function (done) {
         const client = new ClientMock();
-        const rxClient = new RxClient(<PgClient>client);
+        const rxClient = new RxClient(client);
         let errThrown = false;
 
         try {
@@ -200,38 +197,38 @@ suite('RxClient Adapter Unit tests', function () {
         }
 
         rxClient.begin()
-            .concatMap<ResultSet, RxClient>(
-                (rxClient : RxClient) => rxClient.query('insert into t (q, w, e) values ($1, $2, $3)', [ 1, 2, 3 ]),
-                (rxClient : RxClient) => rxClient
+            .concatMap(
+                rxClient => rxClient.query('insert into t (q, w, e) values ($1, $2, $3)', [ 1, 2, 3 ]),
+                rxClient => rxClient
             )
-            .doOnNext((rxClient : RxClient) => {
+            .doOnNext(rxClient => {
                 assert.strictEqual(rxClient.tlevel, 1);
-                assert.deepEqual((<ClientMock>rxClient.client).queries[ 1 ], {
+                assert.deepEqual(rxClient.client.queries[ 1 ], {
                     query: 'insert into t (q, w, e) values ($1, $2, $3)',
                     args: [ 1, 2, 3 ]
                 });
             })
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<ResultSet, RxClient>(
-                (rxClient : RxClient) => rxClient.query('delete from t where id = 100500'),
-                (rxClient : RxClient) => rxClient
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(
+                rxClient => rxClient.query('delete from t where id = 100500'),
+                rxClient => rxClient
             )
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.commit())
-            .doOnNext((rxClient : RxClient) => {
+            .concatMap(rxClient => rxClient.commit())
+            .doOnNext(rxClient => {
                 assert.equal(rxClient.tlevel, 1);
             })
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.begin())
-            .concatMap<ResultSet, RxClient>(
-                (rxClient : RxClient) => rxClient.query('update t set id = id'),
-                (rxClient : RxClient) => rxClient
+            .concatMap(rxClient => rxClient.begin())
+            .concatMap(
+                rxClient => rxClient.query('update t set id = id'),
+                rxClient => rxClient
             )
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
-            .doOnNext((rxClient : RxClient) => {
+            .concatMap(rxClient => rxClient.rollback())
+            .doOnNext(rxClient => {
                 assert.strictEqual(rxClient.tlevel, 1);
             })
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
-            .concatMap<RxClient>((rxClient : RxClient) => rxClient.rollback())
-            .catch((err : RxClientError) => {
+            .concatMap(rxClient => rxClient.rollback())
+            .concatMap(rxClient => rxClient.rollback())
+            .catch(err => {
                 assert.instanceOf(err, RxClientError);
                 assert.equal(err.message, 'The transaction is not open on the client');
                 errThrown = true;
@@ -239,12 +236,12 @@ suite('RxClient Adapter Unit tests', function () {
                 return Rx.Observable.return(rxClient);
             })
             .subscribe(
-                (rxClient : RxClient) => {
+                rxClient => {
                     assert.ok(errThrown);
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
                     assert.equal(client.queries.length, 9);
-                    assert.deepEqual(client.queries.map((q : any) => q.query), [
+                    assert.deepEqual(client.queries.map(q => q.query), [
                         'begin',
                         'insert into t (q, w, e) values ($1, $2, $3)',
                         'savepoint point_1',
