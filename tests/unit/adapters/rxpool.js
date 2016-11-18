@@ -24,12 +24,11 @@ suite('RxPool Adapter Unit tests', function () {
         )
             .subscribe(
                 rxClient => {
-                    // assert.lengthOf(pool.pool_, 2);
-                    assert.strictEqual(pool.pool._count, 2);
                     assert.instanceOf(rxClient, RxClient);
                     assert.equal(rxClient.tlevel, 0);
                     assert.instanceOf(rxClient.client, ClientMock);
-                    // assert.isOk(pool.pool_.includes(rxClient.client));
+                    assert.strictEqual(pool.pool._count, 2);
+                    assert.isOk(pool.pool._inUseObjects.includes(rxClient.client));
                     assert.typeOf(rxClient.client.release, 'function');
                     assert.ok(rxClient.client.connected);
                 },
@@ -44,12 +43,11 @@ suite('RxPool Adapter Unit tests', function () {
         // FIXME timed out
         rxPool.connect()
             .doOnNext(rxClient => {
-                // assert.lengthOf(pool.pool_, 1);
-                assert.strictEqual(pool.pool._count, 1);
                 assert.instanceOf(rxClient, RxClient);
                 assert.equal(rxClient.tlevel, 0);
                 assert.instanceOf(rxClient.client, ClientMock);
-                // assert.ok(pool.pool_[ 0 ] === rxClient.client);
+                assert.strictEqual(pool.pool._count, 1);
+                assert.isOk(pool.pool._inUseObjects.includes(rxClient.client));
                 assert.typeOf(rxClient.client.release, 'function');
                 assert.ok(rxClient.client.connected);
             })
@@ -58,7 +56,7 @@ suite('RxPool Adapter Unit tests', function () {
                 rxPool_ => {
                     assert.instanceOf(rxPool_, RxPool);
                     assert.strictEqual(rxPool_, rxPool);
-                    assert.lengthOf(rxPool_.pool.pool_, 0);
+                    assert.strictEqual(pool.pool._count, 0);
                 },
                 done,
                 done
@@ -91,8 +89,7 @@ suite('RxPool Adapter Unit tests', function () {
                 },
                 done,
                 () => {
-                    // assert.lengthOf(rxPool.pool.pool_, 0);
-                    assert.strictEqual(rxPool.pool.pool._count, 0);
+                    assert.strictEqual(pool.pool._count, 0);
                     done();
                 }
             );
@@ -116,9 +113,8 @@ suite('RxPool Adapter Unit tests', function () {
                 (rxPool_, rxClient) => ({ rxPool_, rxClient })
             )
             .subscribe(
-                ({ rxPool_, rxClient }) => {
-                    // assert.lengthOf(rxPool_.pool.pool_, 1);
-                    assert.strictEqual(rxPool_.pool.pool._count, 1);
+                ({ rxClient }) => {
+                    assert.strictEqual(pool.pool._count, 1);
                     assert.equal(rxClient.tlevel, 3);
                     assert.lengthOf(rxClient.client.queries, 3);
                     assert.deepEqual(rxClient.client.queries.map(q => q.query), [
@@ -151,8 +147,7 @@ suite('RxPool Adapter Unit tests', function () {
             )
             .do(({ rxPool_, rxClient }) => {
                 assert.strictEqual(rxPool_, rxPool);
-                // assert.lengthOf(rxPool_.pool.pool_, 1);
-                assert.strictEqual(rxPool_.pool.pool._count, 1);
+                assert.strictEqual(pool.pool._count, 1);
                 assert.strictEqual(rxClient.tlevel, 2);
             })
             .flatMap(
@@ -162,8 +157,7 @@ suite('RxPool Adapter Unit tests', function () {
             .subscribe(
                 ({ rxPool_, rxClient }) => {
                     assert.throws(::rxPool_.commit, RxPoolError, 'Client with open transaction does not exists');
-                    // assert.lengthOf(rxPool_.pool.pool_, 0);
-                    assert.strictEqual(rxPool_.pool.pool._count, 0);
+                    assert.strictEqual(pool.pool._count, 0);
                     assert.notOk(rxClient.connected);
                     assert.ok(rxClient.released);
                     assert.equal(rxClient.tlevel, 0);

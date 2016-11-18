@@ -20,6 +20,10 @@ var Rx = _interopRequireWildcard(_rx);
 
 var _errors = require('../errors');
 
+var _util = require('../util');
+
+var util = _interopRequireWildcard(_util);
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -55,6 +59,12 @@ var RxClient = function () {
          * @private
          */
         this._disposed = false;
+
+        /**
+         * @type {Rx.Observable}
+         * @private
+         */
+        this._connectSource = undefined;
     }
 
     /**
@@ -85,15 +95,17 @@ var RxClient = function () {
         value: function connect() {
             var _this = this;
 
-            if (this.connected) {
-                return Rx.Observable.return(this);
-            }
-
             var connect = Rx.Observable.fromNodeCallback(this._client.connect, this._client);
 
-            return connect().map(function () {
-                return _this;
-            });
+            if (!this._connectSource) {
+                this._connectSource = connect().do(function () {
+                    return util.log('connect');
+                }).map(function () {
+                    return _this;
+                }).shareReplay(1);
+            }
+
+            return this._connectSource;
         }
 
         /**
@@ -107,7 +119,11 @@ var RxClient = function () {
 
             var end = Rx.Observable.fromNodeCallback(this._client.end, this._client);
 
-            return end().map(function () {
+            return end().do(function () {
+                _this2._connectSource = undefined;
+
+                util.log('close');
+            }).map(function () {
                 return _this2;
             });
         }
@@ -125,6 +141,8 @@ var RxClient = function () {
 
             return this.connect().flatMap(function () {
                 return query(queryText, values);
+            }).do(function () {
+                return util.log('execute query', queryText);
             });
         }
 
@@ -147,9 +165,12 @@ var RxClient = function () {
                 query = 'savepoint point_' + this._tlevel;
             }
 
-            //noinspection CommaExpressionJS
-            return this.query(query).map(function () {
-                return ++_this3._tlevel, _this3;
+            return this.query(query).do(function () {
+                ++_this3._tlevel;
+
+                util.log('begin transaction', _this3._tlevel);
+            }).map(function () {
+                return _this3;
             });
         }
 
@@ -170,16 +191,25 @@ var RxClient = function () {
                 throw new _errors.RxClientError('The transaction is not open on the client');
             }
 
+            /** @type {Rx.Observable} */
+            var source = void 0;
+
             if (this._tlevel === 1 || force) {
-                //noinspection CommaExpressionJS
-                return this.query('commit').map(function () {
-                    return _this4._tlevel = 0, _this4;
+                source = this.query('commit').do(function () {
+                    util.log('commit ' + (force ? '(force)' : '') + ' transaction', _this4._tlevel);
+
+                    _this4._tlevel = 0;
+                });
+            } else {
+                source = this.query('release savepoint point_' + (this._tlevel - 1)).do(function () {
+                    util.log('commit transaction', _this4._tlevel);
+
+                    --_this4._tlevel;
                 });
             }
 
-            //noinspection CommaExpressionJS
-            return this.query('release savepoint point_' + (this._tlevel - 1)).map(function () {
-                return --_this4._tlevel, _this4;
+            return source.map(function () {
+                return _this4;
             });
         }
 
@@ -200,16 +230,25 @@ var RxClient = function () {
                 throw new _errors.RxClientError('The transaction is not open on the client');
             }
 
+            /** @type {Rx.Observable} */
+            var source = void 0;
+
             if (this._tlevel === 1 || force) {
-                //noinspection CommaExpressionJS
-                return this.query('rollback').map(function () {
-                    return _this5._tlevel = 0, _this5;
+                source = this.query('rollback').do(function () {
+                    util.log('rollback ' + (force ? '(force)' : '') + ' transaction', _this5._tlevel);
+
+                    _this5._tlevel = 0;
+                });
+            } else {
+                source = this.query('rollback to savepoint point_' + (this._tlevel - 1)).do(function () {
+                    util.log('rollback transaction', _this5._tlevel);
+
+                    --_this5._tlevel;
                 });
             }
 
-            //noinspection CommaExpressionJS
-            return this.query('rollback to savepoint point_' + (this._tlevel - 1)).map(function () {
-                return --_this5._tlevel, _this5;
+            return source.map(function () {
+                return _this5;
             });
         }
     }, {

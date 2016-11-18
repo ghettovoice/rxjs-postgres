@@ -1,7 +1,7 @@
 import { assert } from "chai";
 import { Rx } from "../../boot";
 import { ClientMock } from "../pgmock";
-import { RxClient, RxClientError } from "../../../src";
+import { RxClient, RxClientError, config } from "../../../src";
 
 suite('RxClient Adapter Unit tests', function () {
     test('Test initialization', function () {
@@ -21,10 +21,10 @@ suite('RxClient Adapter Unit tests', function () {
 
         rxClient.connect()
             .subscribe(
-                rxClient => {
-                    assert.instanceOf(rxClient, RxClient);
+                rxClient_ => {
+                    assert.strictEqual(rxClient_, rxClient);
+                    assert.strictEqual(rxClient_.client, client);
                     assert.ok(rxClient.connected);
-                    assert.instanceOf(rxClient.client, ClientMock);
                     assert.ok(client.connected);
                     assert.equal(rxClient.tlevel, 0);
                 },
@@ -40,9 +40,9 @@ suite('RxClient Adapter Unit tests', function () {
         rxClient.connect()
             .flatMap(rxClient => rxClient.end())
             .subscribe(
-                rxClient => {
-                    assert.instanceOf(rxClient, RxClient);
-                    assert.instanceOf(rxClient.client, ClientMock);
+                rxClient_ => {
+                    assert.strictEqual(rxClient_, rxClient);
+                    assert.strictEqual(rxClient_.client, client);
                     assert.notOk(client.connected);
                     assert.strictEqual(rxClient.tlevel, 0);
                 },
@@ -59,23 +59,23 @@ suite('RxClient Adapter Unit tests', function () {
         Rx.Observable.merge(
             rxClient.query('select 1'),
             rxClient.query('select current_timestamp'),
-            rxClient.query("select 'qwerty")
+            rxClient.query("select 'qwerty'")
         ).subscribe(
             res => {
                 assert.typeOf(res, 'object');
                 assert.ok(Array.isArray(res.rows));
-                assert.equal(client.queries.length, 3);
-                assert.deepEqual(client.queries.map(q => q.query), [
-                    'select 1',
-                    'select current_timestamp',
-                    "select 'qwerty"
-                ]);
 
                 ++i;
             },
             done,
             () => {
                 assert.equal(i, 3);
+                assert.deepEqual(client.queries.map(q => q.query), [
+                    'select 1',
+                    'select current_timestamp',
+                    "select 'qwerty'"
+                ]);
+
                 done();
             }
         );
@@ -84,32 +84,33 @@ suite('RxClient Adapter Unit tests', function () {
     test('Test begin', function (done) {
         const client = new ClientMock();
         const rxClient = new RxClient(client);
+        let i = 0;
 
-        rxClient.begin()
-            .do(rxClient => {
-                assert.instanceOf(rxClient, RxClient);
-                assert.instanceOf(rxClient.client, ClientMock);
-                assert.strictEqual(rxClient.tlevel, 1);
-            })
-            .flatMap(rxClient => rxClient.begin())
-            .do(rxClient => {
-                assert.strictEqual(rxClient.tlevel, 2);
-            })
-            .flatMap(rxClient => rxClient.begin())
-            .subscribe(
-                rxClient => {
-                    assert.ok(client.connected);
-                    assert.equal(rxClient.tlevel, 3);
-                    assert.equal(client.queries.length, 3);
-                    assert.deepEqual(client.queries.map(q => q.query), [
-                        'begin',
-                        'savepoint point_1',
-                        'savepoint point_2'
-                    ]);
-                },
-                done,
-                done
-            );
+        Rx.Observable.merge(
+            rxClient.begin(),
+            rxClient.begin(),
+            rxClient.begin()
+        ).subscribe(
+            rxClient_ => {
+                assert.strictEqual(rxClient_, rxClient);
+                assert.strictEqual(rxClient_.client, client);
+                assert.ok(client.connected);
+
+                ++i;
+            },
+            done,
+            () => {
+                assert.equal(i, 3);
+                assert.equal(rxClient.tlevel, 3);
+                assert.deepEqual(client.queries.map(q => q.query), [
+                    'begin',
+                    'savepoint point_1',
+                    'savepoint point_2'
+                ]);
+
+                done();
+            }
+        );
     });
 
     test('Test commit', function (done) {

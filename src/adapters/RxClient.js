@@ -2,6 +2,7 @@ import assert from 'assert';
 import pg from 'pg';
 import * as Rx from 'rx';
 import { RxClientError } from '../errors';
+import * as util from '../util';
 
 /**
  * Standalone RxJs adapter for `pg.Client`.
@@ -30,6 +31,12 @@ export default class RxClient {
          * @private
          */
         this._disposed = false;
+
+        /**
+         * @type {Rx.Observable}
+         * @private
+         */
+        this._connectSource = undefined;
     }
 
     /**
@@ -75,13 +82,16 @@ export default class RxClient {
      * @return {Rx.Observable<RxClient>}
      */
     connect() {
-        if (this.connected) {
-            return Rx.Observable.return(this);
-        }
-
         const connect = Rx.Observable.fromNodeCallback(this._client.connect, this._client);
 
-        return connect().map(() => this);
+        if (!this._connectSource) {
+            this._connectSource = connect()
+                .do(() => util.log('connect'))
+                .map(() => this)
+                .shareReplay(1);
+        }
+
+        return this._connectSource;
     }
 
     /**
@@ -90,7 +100,13 @@ export default class RxClient {
     end() {
         const end = Rx.Observable.fromNodeCallback(this._client.end, this._client);
 
-        return end().map(() => this);
+        return end()
+            .do(() => {
+                this._connectSource = undefined;
+
+                util.log('close');
+            })
+            .map(() => this);
     }
 
     /**
@@ -101,7 +117,9 @@ export default class RxClient {
     query(queryText, values) {
         const query = Rx.Observable.fromNodeCallback(this._client.query, this._client);
 
-        return this.connect().flatMap(() => query(queryText, values));
+        return this.connect()
+            .flatMap(() => query(queryText, values))
+            .do(() => util.log('execute query', queryText));
     }
 
     /**
@@ -118,8 +136,13 @@ export default class RxClient {
             query = `savepoint point_${this._tlevel}`;
         }
 
-        //noinspection CommaExpressionJS
-        return this.query(query).map(() => (++this._tlevel, this));
+        return this.query(query)
+            .do(() => {
+                ++this._tlevel;
+
+                util.log('begin transaction', this._tlevel);
+            })
+            .map(() => this);
     }
 
     /**
@@ -134,14 +157,26 @@ export default class RxClient {
             throw new RxClientError('The transaction is not open on the client');
         }
 
+        /** @type {Rx.Observable} */
+        let source;
+
         if (this._tlevel === 1 || force) {
-            //noinspection CommaExpressionJS
-            return this.query('commit').map(() => (this._tlevel = 0, this));
+            source = this.query('commit')
+                .do(() => {
+                    util.log(`commit ${force ? '(force)' : ''} transaction`, this._tlevel);
+
+                    this._tlevel = 0;
+                });
+        } else {
+            source = this.query(`release savepoint point_${this._tlevel - 1}`)
+                .do(() => {
+                    util.log('commit transaction', this._tlevel);
+
+                    --this._tlevel;
+                });
         }
 
-        //noinspection CommaExpressionJS
-        return this.query(`release savepoint point_${this._tlevel - 1}`)
-            .map(() => (--this._tlevel, this));
+        return source.map(() => this);
     }
 
     /**
@@ -156,13 +191,25 @@ export default class RxClient {
             throw new RxClientError('The transaction is not open on the client');
         }
 
+        /** @type {Rx.Observable} */
+        let source;
+
         if (this._tlevel === 1 || force) {
-            //noinspection CommaExpressionJS
-            return this.query('rollback').map(() => (this._tlevel = 0, this));
+            source = this.query('rollback')
+                .do(() => {
+                    util.log(`rollback ${force ? '(force)' : ''} transaction`, this._tlevel);
+
+                    this._tlevel = 0;
+                });
+        } else {
+            source = this.query(`rollback to savepoint point_${this._tlevel - 1}`)
+                .do(() => {
+                    util.log('rollback transaction', this._tlevel);
+
+                    --this._tlevel;
+                });
         }
 
-        //noinspection CommaExpressionJS
-        return this.query(`rollback to savepoint point_${this._tlevel - 1}`)
-            .map(() => (--this._tlevel, this));
+        return source.map(() => this);
     }
 }

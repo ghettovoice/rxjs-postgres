@@ -9,3 +9,11 @@
 
 export * from './adapters';
 export * from './errors';
+
+const config = {
+    DEBUG: process.env.NODE_ENV === 'development'
+};
+
+export {
+    config
+};

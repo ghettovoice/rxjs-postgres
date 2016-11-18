@@ -51,7 +51,6 @@ export class ClientMock extends pg.Client {
 
         setTimeout(() => {
             typeof callback === 'function' && callback(undefined, {
-                client: this,
                 rows: []
             });
         }, 100);
