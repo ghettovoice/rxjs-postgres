@@ -1,6 +1,5 @@
-import assert from 'assert';
 import pg from 'pg';
-import * as Rx from 'rx';
+import Rx from 'rxjs';
 import { RxClientError } from '../errors';
 import * as util from '../util';
 
@@ -9,15 +8,15 @@ import * as util from '../util';
  */
 export default class RxClient {
     /**
-     * @param {pg.Client} client
+     * @param {Client} client
      */
     constructor(client) {
         if (!(client instanceof pg.Client)) {
-            throw new RxClientError('Client must be instance of pg.Client class');
+            throw new RxClientError('Client must be instance of Client class');
         }
 
         /**
-         * @type {pg.Client}
+         * @type {Client}
          * @private
          */
         this._client = client;
@@ -26,21 +25,10 @@ export default class RxClient {
          * @private
          */
         this._tlevel = 0;
-        /**
-         * @type {boolean}
-         * @private
-         */
-        this._disposed = false;
-
-        /**
-         * @type {Rx.Observable}
-         * @private
-         */
-        this._connectSource = undefined;
     }
 
     /**
-     * @type {pg.Client}
+     * @type {Client}
      */
     get client() {
         return this._client;
@@ -54,162 +42,199 @@ export default class RxClient {
     }
 
     /**
-     * @type {boolean}
-     */
-    get isDisposed() {
-        return this._disposed;
-    }
-
-    /**
      * @return {boolean}
      */
     get connected() {
         return this._client.connection.stream.readyState === 'open';
     }
 
+    /**
+     * Releases client acquired from pool
+     */
     release() {
         typeof this._client.release === 'function' && this._client.release();
-    }
-
-    dispose() {
-        if (!this._disposed) {
-            this.release();
-            this._disposed = true;
-        }
+        this._tlevel = 0;
     }
 
     /**
-     * @return {Rx.Observable<RxClient>}
+     * @return {Observable<RxClient>}
      */
     connect() {
-        const connect = Rx.Observable.fromNodeCallback(this._client.connect, this._client);
-
-        if (!this._connectSource) {
-            this._connectSource = connect()
-                .do(() => util.log('connect'))
-                .map(() => this)
-                .shareReplay(1);
+        if (this.connected) {
+            return Rx.Observable.of(this);
         }
 
-        return this._connectSource;
+        const connect = Rx.Observable.bindNodeCallback(::this._client.connect, () => this);
+
+        return connect().do(() => util.log('RxClient: client connected'));
     }
 
     /**
-     * @return {Rx.Observable<RxClient>}
+     * @return {Observable<RxClient>}
+     */
+    open() {
+        return this.connect();
+    }
+
+    /**
+     * @return {Observable<RxClient>}
      */
     end() {
-        const end = Rx.Observable.fromNodeCallback(this._client.end, this._client);
+        if (!this.connected) {
+            return Rx.Observable.of(this);
+        }
 
-        return end()
-            .do(() => {
-                this._connectSource = undefined;
+        const end = Rx.Observable.bindNodeCallback(::this._client.end, () => this);
 
-                util.log('close');
-            })
-            .map(() => this);
+        return end().do(() => {
+            this._tlevel = 0;
+            util.log('RxClient: client ended');
+        });
+    }
+
+    /**
+     * @return {Observable.<RxClient>}
+     */
+    close() {
+        return this.end();
     }
 
     /**
      * @param {string} queryText
      * @param {Array} [values]
-     * @return {Rx.Observable<Object>}
+     * @return {Observable<Object>}
      */
     query(queryText, values) {
-        const query = Rx.Observable.fromNodeCallback(this._client.query, this._client);
-
         return this.connect()
-            .flatMap(() => query(queryText, values))
-            .do(() => util.log('execute query', queryText));
-    }
+            .flatMap(() => {
+                const query = Rx.Observable.bindNodeCallback(::this._client.query);
 
-    /**
-     * @return {Rx.Observable<RxClient>}
-     */
-    begin() {
-        assert(this._tlevel >= 0, 'Current transaction level >= 0');
-
-        let query;
-
-        if (this._tlevel === 0) {
-            query = 'begin';
-        } else {
-            query = `savepoint point_${this._tlevel}`;
-        }
-
-        return this.query(query)
-            .do(() => {
-                ++this._tlevel;
-
-                util.log('begin transaction', this._tlevel);
+                return query(queryText, values);
             })
-            .map(() => this);
+            .do(() => util.log('RxClient: query executed', queryText));
     }
 
-    /**
-     * @param {boolean} [force] Commit transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {RxClientError}
-     */
-    commit(force) {
-        assert(this._tlevel >= 0, 'Current transaction level >= 0');
-
-        if (this._tlevel === 0) {
-            throw new RxClientError('The transaction is not open on the client');
-        }
-
-        /** @type {Rx.Observable} */
-        let source;
-
-        if (this._tlevel === 1 || force) {
-            source = this.query('commit')
-                .do(() => {
-                    util.log(`commit ${force ? '(force)' : ''} transaction`, this._tlevel);
-
-                    this._tlevel = 0;
-                });
-        } else {
-            source = this.query(`release savepoint point_${this._tlevel - 1}`)
-                .do(() => {
-                    util.log('commit transaction', this._tlevel);
-
-                    --this._tlevel;
-                });
-        }
-
-        return source.map(() => this);
-    }
-
-    /**
-     * @param {boolean} [force] Rollback transaction with all savepoints.
-     * @return {Rx.Observable<RxClient>}
-     * @throws {RxClientError}
-     */
-    rollback(force) {
-        assert(this._tlevel >= 0, 'Current transaction level >= 0');
-
-        if (this._tlevel === 0) {
-            throw new RxClientError('The transaction is not open on the client');
-        }
-
-        /** @type {Rx.Observable} */
-        let source;
-
-        if (this._tlevel === 1 || force) {
-            source = this.query('rollback')
-                .do(() => {
-                    util.log(`rollback ${force ? '(force)' : ''} transaction`, this._tlevel);
-
-                    this._tlevel = 0;
-                });
-        } else {
-            source = this.query(`rollback to savepoint point_${this._tlevel - 1}`)
-                .do(() => {
-                    util.log('rollback transaction', this._tlevel);
-
-                    --this._tlevel;
-                });
-        }
-
-        return source.map(() => this);
-    }
+    // /**
+    //  * @return {Rx.Observable<RxClient>}
+    //  */
+    // begin() {
+    //     assert(this._tlevel >= 0, 'Current transaction level >= 0');
+    //
+    //     util.log('begin transaction');
+    //      // todo doOnError => reset tlevel
+    //     this._transactionSource = (this._transactionSource || Rx.Observable.return(null))
+    //         .flatMap(() => {
+    //             let query;
+    //
+    //             if (this._tlevel === 0) {
+    //                 query = 'begin';
+    //             } else {
+    //                 query = `savepoint point_${this._tlevel}`;
+    //             }
+    //
+    //             return this.query(query);
+    //         })
+    //         .do(() => {
+    //             ++this._tlevel;
+    //
+    //             util.log('transaction started', this._tlevel);
+    //         })
+    //         .map(() => this)
+    //         .shareReplay(1);
+    //
+    //     return this._transactionSource;
+    // }
+    //
+    // /**
+    //  * @param {boolean} [force] Commit transaction with all savepoints.
+    //  * @return {Rx.Observable<RxClient>}
+    //  * @throws {RxClientError}
+    //  */
+    // commit(force) {
+    //     assert(this._tlevel >= 0, 'Current transaction level >= 0');
+    //
+    //     if (!this._transactionSource) {
+    //         throw new RxClientError('The transaction is not open on the client');
+    //     }
+    //
+    //     util.log('commit transaction');
+    //
+    //     this._transactionSource = this._transactionSource.flatMap(() => {
+    //         if (this._tlevel === 0) {
+    //             throw new RxClientError('The transaction is not open on the client');
+    //         }
+    //
+    //         /** @type {Rx.Observable} */
+    //         let source;
+    //
+    //         if (this._tlevel === 1 || force) {
+    //             source = this.query('commit')
+    //                 .do(() => {
+    //                     util.log(`transaction committed ${force ? '(force)' : ''}`, this._tlevel);
+    //
+    //                     this._tlevel = 0;
+    //                     this._transactionSource = undefined;
+    //                 });
+    //         } else {
+    //             source = this.query(`release savepoint point_${this._tlevel - 1}`)
+    //                 .do(() => {
+    //                     util.log('transaction committed', this._tlevel);
+    //
+    //                     --this._tlevel;
+    //                 });
+    //         }
+    //
+    //         return source;
+    //     }).map(() => this)
+    //         .shareReplay(1);
+    //
+    //
+    //     return this._transactionSource;
+    // }
+    //
+    // /**
+    //  * @param {boolean} [force] Rollback transaction with all savepoints.
+    //  * @return {Rx.Observable<RxClient>}
+    //  * @throws {RxClientError}
+    //  */
+    // rollback(force) {
+    //     assert(this._tlevel >= 0, 'Current transaction level >= 0');
+    //
+    //     if (!this._transactionSource) {
+    //         throw new RxClientError('The transaction is not open on the client');
+    //     }
+    //
+    //     util.log('rollback transaction');
+    //
+    //     this._transactionSource = this._transactionSource.flatMap(() => {
+    //         if (this._tlevel === 0) {
+    //             throw new RxClientError('The transaction is not open on the client');
+    //         }
+    //
+    //         /** @type {Rx.Observable} */
+    //         let source;
+    //
+    //         if (this._tlevel === 1 || force) {
+    //             source = this.query('rollback')
+    //                 .do(() => {
+    //                     util.log(`transaction rolled back ${force ? '(force)' : ''}`, this._tlevel);
+    //
+    //                     this._tlevel = 0;
+    //                     this._transactionSource = undefined;
+    //                 });
+    //         } else {
+    //             source = this.query(`rollback to savepoint point_${this._tlevel - 1}`)
+    //                 .do(() => {
+    //                     util.log('transaction rolled back', this._tlevel);
+    //
+    //                     --this._tlevel;
+    //                 });
+    //         }
+    //
+    //         return source;
+    //     }).map(() => this)
+    //         .shareReplay(1);
+    //
+    //     return this._transactionSource;
+    // }
 }

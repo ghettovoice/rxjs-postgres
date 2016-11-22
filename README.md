@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-...
+npm install --save rxjs-postgres
 ```
 
 ## Test
@@ -22,5 +22,13 @@
 npm run test
 
 # Tests with coverage
-npm run test:cov
+npm run test:cover
 ```
+
+## TODO
+
+- [ ] Implement custom Observable class with operators (connect / open, end, query & etc.) 
+- [ ] Write tests on error handling (sql errors, disconnects & etc)
+- [ ] Implement auto releasing of the acquired client from the pool (client as disposable resource)
+- [ ] Transaction helpers in RxClient and RxPool (tlevel handling on errors, disconnect & etc)
+- [ ] ES7 decorators to reactify `node-postgres`

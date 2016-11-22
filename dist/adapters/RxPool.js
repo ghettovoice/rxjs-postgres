@@ -10,15 +10,19 @@ var _pg = require('pg');
 
 var _pg2 = _interopRequireDefault(_pg);
 
-var _rx = require('rx');
+var _rxjs = require('rxjs');
 
-var Rx = _interopRequireWildcard(_rx);
+var _rxjs2 = _interopRequireDefault(_rxjs);
 
 var _RxClient = require('./RxClient');
 
 var _RxClient2 = _interopRequireDefault(_RxClient);
 
 var _errors = require('../errors');
+
+var _util = require('../util');
+
+var util = _interopRequireWildcard(_util);
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
@@ -31,29 +35,29 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  */
 var RxPool = function () {
     /**
-     * @param {pg.Pool} pool
+     * @param {Pool} pool
      */
     function RxPool(pool) {
         _classCallCheck(this, RxPool);
 
         if (!(pool instanceof _pg2.default.Pool)) {
-            throw new _errors.RxPoolError('Pool must be instance of pg.Pool class');
+            throw new _errors.RxPoolError('Pool must be instance of Pool class');
         }
 
         /**
-         * @type {pg.Pool}
+         * @type {Pool}
          * @private
          */
         this._pool = pool;
         /**
-         * @type {Rx.ConnectableObservable<RxClient>}
+         * @type {Observable}
          * @private
          */
         this._tclientSource = undefined;
     }
 
     /**
-     * @return {pg.Pool}
+     * @return {Pool}
      */
 
 
@@ -62,16 +66,27 @@ var RxPool = function () {
 
 
         /**
-         * @return {Rx.Observable<RxClient>}
+         * @param {boolean} [autoRelease=true] Wrap client as `Rx.Disposable` resource
+         * @return {Observable<RxClient>}
          */
         value: function connect() {
-            return Rx.Observable.fromPromise(this._pool.connect()).map(function (client) {
-                return new _RxClient2.default(client);
+            var autoRelease = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
+            util.log('RxPool: connecting client...');
+
+            return _rxjs2.default.Observable.fromPromise(this._pool.connect()).flatMap(function (client) {
+                return autoRelease ? _rxjs2.default.Observable.using(function () {
+                    return new _RxClient2.default(client);
+                }, function (rxClient) {
+                    return _rxjs2.default.Observable.of(rxClient);
+                }) : _rxjs2.default.Observable.of(new _RxClient2.default(client));
+            }).do(function () {
+                return util.log('RxPool: client connected');
             });
         }
 
         /**
-         * @return {Rx.Observable<RxClient>}
+         * @return {Observable<RxClient>}
          */
 
     }, {
@@ -81,7 +96,7 @@ var RxPool = function () {
         }
 
         /**
-         * @return {Rx.Observable<RxPool>}
+         * @return {Observable<RxPool>}
          */
 
     }, {
@@ -89,8 +104,14 @@ var RxPool = function () {
         value: function end() {
             var _this = this;
 
-            return Rx.Observable.fromPromise(this._pool.end()).map(function () {
+            util.log('RxPool: ending pool...');
+
+            return _rxjs2.default.Observable.fromPromise(this._pool.end()).map(function () {
                 return _this;
+            }).do(function () {
+                _this._tclientSource = undefined;
+
+                util.log('RxPool: pool ended');
             });
         }
 
@@ -103,76 +124,64 @@ var RxPool = function () {
     }, {
         key: 'query',
         value: function query(queryText, values) {
-            return Rx.Observable.fromPromise(this._pool.query(queryText, values));
-        }
-
-        /**
-         * @return {Rx.Observable<RxPool>}
-         */
-
-    }, {
-        key: 'begin',
-        value: function begin() {
-            var _this2 = this;
-
-            if (!this._tclientSource) {
-                this._tclientSource = this.connect().shareReplay(1);
-            }
-
-            return this._tclientSource.flatMap(function (rxClient) {
-                return rxClient.begin();
-            }, function () {
-                return _this2;
+            return (this._tclientSource || this.connect()).flatMap(function (rxClient) {
+                return rxClient.query(queryText, values);
             });
         }
 
-        /**
-         * @param {boolean} [force] Commit transaction with all savepoints.
-         * @return {Rx.Observable<RxPool>}
-         * @throws {RxPoolError}
-         */
+        // /**
+        //  * @return {Rx.Observable<RxPool>}
+        //  */
+        // begin() {
+        //     this._tclientSource = (this._tclientSource || this.connect())
+        //         .flatMap(rxClient => rxClient.begin())
+        //         .shareReplay(1);
+        //
+        //     return this._tclientSource.map(() => this);
+        // }
+        //
+        // /**
+        //  * @param {boolean} [force] Commit transaction with all savepoints.
+        //  * @return {Rx.Observable<RxPool>}
+        //  * @throws {RxPoolError}
+        //  */
+        // commit(force) {
+        //     if (!this._tclientSource) {
+        //         throw new RxPoolError('Client with open transaction does not exists');
+        //     }
+        //
+        //     this._tclientSource = this._tclientSource.flatMap(rxClient => rxClient.commit(force))
+        //         .do(rxClient => {
+        //             if (rxClient.tlevel === 0) {
+        //                 this._tclientSource = undefined;
+        //             }
+        //         })
+        //         .shareReplay(1);
+        //
+        //     return this._tclientSource.map(() => this);
+        // }
+        //
+        // /**
+        //  * @param {boolean} [force] Rollback transaction with all savepoints.
+        //  * @return {Rx.Observable<RxPool>}
+        //  * @throws {RxPoolError}
+        //  */
+        // rollback(force) {
+        //     if (!this._tclientSource) {
+        //         throw new RxPoolError('Client with open transaction does not exists');
+        //     }
+        //
+        //     this._tclientSource = this._tclientSource.flatMap(rxClient => rxClient.rollback(force))
+        //         .do(rxClient => {
+        //             if (rxClient.tlevel === 0) {
+        //                 this._tclientSource = undefined;
+        //             }
+        //         })
+        //         .shareReplay(1);
+        //
+        //     return this._tclientSource.map(() => this);
+        // }
 
-    }, {
-        key: 'commit',
-        value: function commit(force) {
-            var _this3 = this;
-
-            if (!this._tclientSource) {
-                throw new _errors.RxPoolError('Client with open transaction does not exists');
-            }
-            // todo release when tlevel = 0
-            return this._tclientSource.flatMap(function (rxClient) {
-                return rxClient.commit(force);
-            }).do(function (rxClient) {
-                if (!rxClient.tlevel) {
-                    rxClient.release();
-                    _this3._tclientSource = null;
-                }
-            });
-        }
-
-        /**
-         * @param {boolean} [force] Rollback transaction with all savepoints.
-         * @return {Rx.Observable<RxPool>}
-         * @throws {RxPoolError}
-         */
-
-    }, {
-        key: 'rollback',
-        value: function rollback(force) {
-            var _this4 = this;
-
-            if (!this._tclientSource) {
-                throw new _errors.RxPoolError('Client with open transaction does not exists');
-            }
-            // todo release when tlevel = 0
-            return this._tclientSource.flatMap(function (rxClient) {
-                return rxClient.rollback(force);
-            }, function () {
-                return _this4;
-            });
-            ;
-        }
     }, {
         key: 'pool',
         get: function get() {

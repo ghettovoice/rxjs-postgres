@@ -6,11 +6,19 @@ Object.defineProperty(exports, "__esModule", {
 exports.datetime = datetime;
 exports.log = log;
 
+var _path = require('path');
+
+var _path2 = _interopRequireDefault(_path);
+
 var _chalk = require('chalk');
 
 var _chalk2 = _interopRequireDefault(_chalk);
 
 var _ = require('./');
+
+var _stackTrace = require('stack-trace');
+
+var _stackTrace2 = _interopRequireDefault(_stackTrace);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -25,14 +33,16 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 /**
  * @param {number} [ts]
- * @returns {string}
+ * @returns {string} Return UTC date/time string
  */
 function datetime(ts) {
     if (ts == null) {
         ts = Date.now();
     }
 
-    return new Date(ts).toISOString().replace(/T/, ' ').replace(/\..+/, '');
+    var date = new Date(ts);
+
+    return ('0' + date.getDate()).slice(-2) + '.' + ('0' + (date.getMonth() + 1)).slice(-2) + '.' + date.getFullYear() + ' ' + ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + ':' + ('0' + date.getSeconds()).slice(-2);
 }
 
 /**
@@ -43,11 +53,15 @@ function log(message) {
     if (_.config.DEBUG) {
         var _console;
 
+        var trace = _stackTrace2.default.get();
+        var callerFile = trace[1].getFileName().replace(_path2.default.dirname(__dirname) + '/', '');
+        var callerFileLine = trace[1].getLineNumber();
+
         for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
             args[_key - 1] = arguments[_key];
         }
 
-        (_console = console).log.apply(_console, [_chalk2.default.cyan('[ ' + datetime() + ' ]'), _chalk2.default.blue(message)].concat(args));
+        (_console = console).log.apply(_console, [_chalk2.default.cyan('[ ' + datetime() + ' ' + _chalk2.default.grey(callerFile + ':' + callerFileLine) + ' ]'), _chalk2.default.blue(message)].concat(args));
     }
 }
 //# sourceMappingURL=util.js.map
