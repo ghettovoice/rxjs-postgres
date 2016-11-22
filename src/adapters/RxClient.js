@@ -50,10 +50,26 @@ export default class RxClient {
 
     /**
      * Releases client acquired from pool
+     *
+     * @param {Error} [err]
+     * @return {Observable<RxClient>}
      */
-    release() {
-        typeof this._client.release === 'function' && this._client.release();
+    release(err) {
+        typeof this._client.release === 'function' && this._client.release(err);
         this._tlevel = 0;
+
+        return Rx.Observable.create(subscriber => {
+            if (err) {
+                this._client.once('end', () => {
+                    // todo test what to emit: value or error?
+                    subscriber.next(this);
+                    subscriber.complete();
+                });
+            } else {
+                subscriber.next(this);
+                subscriber.complete();
+            }
+        });
     }
 
     /**
@@ -72,13 +88,6 @@ export default class RxClient {
     /**
      * @return {Observable<RxClient>}
      */
-    open() {
-        return this.connect();
-    }
-
-    /**
-     * @return {Observable<RxClient>}
-     */
     end() {
         if (!this.connected) {
             return Rx.Observable.of(this);
@@ -88,15 +97,9 @@ export default class RxClient {
 
         return end().do(() => {
             this._tlevel = 0;
+
             util.log('RxClient: client ended');
         });
-    }
-
-    /**
-     * @return {Observable.<RxClient>}
-     */
-    close() {
-        return this.end();
     }
 
     /**

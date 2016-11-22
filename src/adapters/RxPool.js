@@ -21,11 +21,6 @@ export default class RxPool {
          * @private
          */
         this._pool = pool;
-        /**
-         * @type {Observable}
-         * @private
-         */
-        this._tclientSource = undefined;
     }
 
     /**
@@ -39,9 +34,7 @@ export default class RxPool {
      * @param {boolean} [autoRelease=true] Wrap client as `Rx.Disposable` resource
      * @return {Observable<RxClient>}
      */
-    connect(autoRelease = true) {
-        util.log('RxPool: connecting client...');
-
+    connect(autoRelease = false) { // todo change on true later
         return Rx.Observable.fromPromise(this._pool.connect())
             .flatMap(
                 client => autoRelease ?
@@ -65,15 +58,9 @@ export default class RxPool {
      * @return {Observable<RxPool>}
      */
     end() {
-        util.log('RxPool: ending pool...');
-
         return Rx.Observable.fromPromise(this._pool.end())
             .map(() => this)
-            .do(() => {
-                this._tclientSource = undefined;
-
-                util.log('RxPool: pool ended');
-            });
+            .do(() => util.log('RxPool: pool ended'));
     }
 
     /**
@@ -82,7 +69,7 @@ export default class RxPool {
      * @return {Rx.Observable<Object>}
      */
     query(queryText, values) {
-        return (this._tclientSource || this.connect())
+        return this.connect()
             .flatMap(rxClient => rxClient.query(queryText, values));
     }
 

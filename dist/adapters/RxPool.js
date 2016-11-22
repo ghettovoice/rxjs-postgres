@@ -49,11 +49,6 @@ var RxPool = function () {
          * @private
          */
         this._pool = pool;
-        /**
-         * @type {Observable}
-         * @private
-         */
-        this._tclientSource = undefined;
     }
 
     /**
@@ -70,10 +65,8 @@ var RxPool = function () {
          * @return {Observable<RxClient>}
          */
         value: function connect() {
-            var autoRelease = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
-
-            util.log('RxPool: connecting client...');
-
+            var autoRelease = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+            // todo change on true later
             return _rxjs2.default.Observable.fromPromise(this._pool.connect()).flatMap(function (client) {
                 return autoRelease ? _rxjs2.default.Observable.using(function () {
                     return new _RxClient2.default(client);
@@ -104,14 +97,10 @@ var RxPool = function () {
         value: function end() {
             var _this = this;
 
-            util.log('RxPool: ending pool...');
-
             return _rxjs2.default.Observable.fromPromise(this._pool.end()).map(function () {
                 return _this;
             }).do(function () {
-                _this._tclientSource = undefined;
-
-                util.log('RxPool: pool ended');
+                return util.log('RxPool: pool ended');
             });
         }
 
@@ -124,7 +113,7 @@ var RxPool = function () {
     }, {
         key: 'query',
         value: function query(queryText, values) {
-            return (this._tclientSource || this.connect()).flatMap(function (rxClient) {
+            return this.connect().flatMap(function (rxClient) {
                 return rxClient.query(queryText, values);
             });
         }

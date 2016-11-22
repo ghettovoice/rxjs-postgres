@@ -1,68 +1,113 @@
 import { assert } from 'chai';
+import sinon from 'sinon';
 import { PoolMock } from '../pgmock';
-import { RxPool, RxPoolError } from '../../src';
+import { RxPool, RxClient, RxPoolError } from '../../src';
+import Rx from 'rxjs';
 
 suite('RxPool Adapter tests', function () {
+    let pool, rxPool;
+
+    setup(function () {
+        pool = new PoolMock();
+        rxPool = new RxPool(pool);
+
+        sinon.spy(pool, 'connect');
+        sinon.spy(pool, 'end');
+    });
+
+    teardown(function () {
+        pool.connect.restore();
+        pool.end.restore();
+
+        pool = rxPool = undefined;
+    });
+
     test('Test initialization', function () {
         assert.throws(() => new RxPool({ query() {} }), RxPoolError, 'Pool must be instance of Pool class');
-
-        const pool = new PoolMock();
-        const rxPool = new RxPool(pool);
-
         assert.strictEqual(rxPool.pool, pool);
     });
 
-    // test('Test connect / take', function (done) {
-    //     const pool = new PoolMock();
-    //     const rxPool = new RxPool(pool);
-    //     let rxClient;
-    //     let i = 0;
-    //
-    //     Rx.Observable.merge(
-    //         rxPool.connect(),
-    //         rxPool.take()
-    //     ).subscribe(
-    //         rxClient_ => {
-    //             assert.instanceOf(rxClient_, RxClient);
-    //             assert.strictEqual(rxClient_.tlevel, 0);
-    //             assert.instanceOf(rxClient_.client, ClientMock);
-    //             assert.typeOf(rxClient_.client.release, 'function');
-    //             assert.ok(rxClient_.client.connected);
-    //
-    //             rxClient = rxClient_;
-    //
-    //             ++i;
-    //         },
-    //         done,
-    //         () => {
-    //             assert.strictEqual(i, 2);
-    //             assert.strictEqual(pool.pool.getPoolSize(), 2);
-    //
-    //             assert.ok(rxClient.isDisposed);
-    //             rxClient.dispose();
-    //             assert.ok(rxClient.isDisposed);
-    //
-    //             done();
-    //         }
-    //     );
-    // });
-    //
-    // test('Test end', function (done) {
-    //     const pool = new PoolMock();
-    //     const rxPool = new RxPool(pool);
-    //
-    //     rxPool.connect()
-    //         .flatMap(rxClient => rxPool.end())
-    //         .subscribe(
-    //             rxPool_ => {
-    //                 assert.strictEqual(rxPool_, rxPool);
-    //                 assert.strictEqual(pool.pool.getPoolSize(), 0);
-    //             },
-    //             done,
-    //             done
-    //         );
-    // });
-    //
+    suite('Connect -> rxClient query tests -> pool end', function () {
+        test('Test valid chain', function (done) {
+            let i = 0;
+
+            Rx.Observable.merge(
+                rxPool.connect(),
+                rxPool.take()
+            ).do(rxClient => {
+                assert.instanceOf(rxClient, RxClient);
+                assert.ok(rxClient.connected);
+                assert.typeOf(rxClient.client.release, 'function');
+            }).flatMap(
+                rxClient => rxClient.query('select $1 :: int col', [ 123 ]),
+                (rxClient, result) => ({ rxClient, result })
+            ).concatMap(
+                ({ rxClient }) => rxClient.release(),
+                prev => prev
+            ).concatMap(
+                () => rxPool.end(),
+                prev => prev
+            ).subscribe(
+                ({ rxClient, result }) => {
+                    assert.typeOf(result, 'object');
+                    assert.deepEqual(result.rows, [
+                        { col: 123 }
+                    ]);
+                    assert.deepEqual(rxClient.client.queries, [
+                        { queryText: 'select $1 :: int col', values: [ 123 ] }
+                    ]);
+
+                    ++i;
+                },
+                done,
+                () => {
+                    assert.strictEqual(i, 2);
+                    assert.strictEqual(pool.pool.getPoolSize(), 0);
+
+                    done();
+                }
+            );
+        });
+
+        test('Test invalid chain', function (done) {
+            let errThrown;
+
+            rxPool.take()
+                .do(rxClient => {
+                    assert.instanceOf(rxClient, RxClient);
+                    assert.ok(rxClient.connected);
+                    assert.typeOf(rxClient.client.release, 'function');
+                    assert.strictEqual(pool.pool.getPoolSize(), 1);
+                })
+                .flatMap(
+                    rxClient => rxClient.query('select SQL Syntax Error', [ 'qwe' ])
+                        .catch(err => {
+                            errThrown = err;
+
+                            return rxClient.release(err);
+                        })
+                        .do(() => {
+                            assert.notOk(rxClient.connected);
+                        }),
+                    (rxClient, result) => ({ rxClient, result })
+                )
+                .concatMap(
+                    () => rxPool.end(),
+                    prev => prev
+                )
+                .subscribe(
+                    () => {
+                        assert.instanceOf(errThrown, Error);
+                        assert.equal(errThrown.message, 'syntax error at or near "Error"');
+                        assert.strictEqual(pool.pool.getPoolSize(), 0);
+                    },
+                    done,
+                    done
+                );
+        });
+    });
+
+
     // test('Test query', function (done) {
     //     const pool = new PoolMock();
     //     const rxPool = new RxPool(pool);

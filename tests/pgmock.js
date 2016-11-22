@@ -10,8 +10,11 @@ import * as util from '../src/util';
  * @extends {Client}
  */
 export class ClientMock extends pg.Client {
-    constructor(...args) {
-        super(...args);
+    constructor() {
+        super({
+            user: 'postgres',
+            database: 'postgres'
+        });
 
         this.queries = [];
     }

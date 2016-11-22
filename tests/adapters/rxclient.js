@@ -4,16 +4,11 @@ import Rx from 'rxjs';
 import { ClientMock } from '../pgmock';
 import { RxClient, RxClientError } from '../../src';
 
-const connection = {
-    user: 'postgres',
-    database: 'postgres'
-};
-
 suite('RxClient Adapter tests', function () {
     test('Test initialization', function () {
         assert.throws(() => new RxClient({ query() {} }), RxClientError, 'Client must be instance of Client class');
 
-        const client = new ClientMock(connection);
+        const client = new ClientMock();
         const rxClient = new RxClient(client);
 
         assert.strictEqual(rxClient.client, client);
@@ -24,16 +19,18 @@ suite('RxClient Adapter tests', function () {
         let client, rxClient;
 
         setup(function () {
-            client = new ClientMock(connection);
+            client = new ClientMock();
             rxClient = new RxClient(client);
 
             sinon.spy(client, 'connect');
             sinon.spy(client, 'end');
         });
 
-        teardown(function () {
+        teardown(function (done) {
             client.connect.restore();
             client.end.restore();
+
+            client.end(done);
 
             client = rxClient = undefined;
         });
@@ -46,7 +43,7 @@ suite('RxClient Adapter tests', function () {
                     assert.ok(rxClient.connected);
                     assert.equal(rxClient.tlevel, 0);
                 })
-                .flatMap(rxClient_ => rxClient_.open())
+                .flatMap(rxClient_ => rxClient_.connect())
                 .flatMap(rxClient_ => rxClient_.end())
                 .subscribe(
                     rxClient_ => {
@@ -77,7 +74,7 @@ suite('RxClient Adapter tests', function () {
                         assert.strictEqual(rxClient.tlevel, 0);
                     })
                     .flatMap(rxClient_ => rxClient_.end())
-                    .flatMap(rxClient_ => rxClient_.close())
+                    .flatMap(rxClient_ => rxClient_.end())
                     .subscribe(
                         rxClient_ => {
                             assert.strictEqual(rxClient_, rxClient);
@@ -98,7 +95,7 @@ suite('RxClient Adapter tests', function () {
         let client, rxClient;
 
         setup(function () {
-            client = new ClientMock(connection);
+            client = new ClientMock();
             rxClient = new RxClient(client);
 
             sinon.spy(client, 'connect');
