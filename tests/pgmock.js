@@ -72,7 +72,7 @@ export class PoolMock extends pg.Pool {
     }
 
     query(queryText, values, cb) {
-        return super.queryText(queryText, values, cb)
+        return super.query(queryText, values, cb)
             .then(res => {
                 this.queries.push({ queryText, values });
                 util.log('PoolMock: query executed', queryText);

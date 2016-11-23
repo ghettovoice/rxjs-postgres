@@ -31,19 +31,22 @@ export default class RxPool {
     }
 
     /**
-     * @param {boolean} [autoRelease=true] Wrap client as `Rx.Disposable` resource
      * @return {Observable<RxClient>}
      */
-    connect(autoRelease = false) { // todo change on true later
+    connect() {
         return Rx.Observable.fromPromise(this._pool.connect())
-            .flatMap(
-                client => autoRelease ?
-                          Rx.Observable.using(
-                              () => new RxClient(client),
-                              rxClient => Rx.Observable.of(rxClient)
-                          ) :
-                          Rx.Observable.of(new RxClient(client))
-            )
+            .map(client => {
+                const rxClient = new RxClient(client);
+
+                rxClient.release = function (err) {
+                    util.log('RxClient: release');
+
+                    delete rxClient.release;
+                    client.release(err);
+                };
+
+                return rxClient;
+            })
             .do(() => util.log('RxPool: client connected'));
     }
 
@@ -69,8 +72,8 @@ export default class RxPool {
      * @return {Rx.Observable<Object>}
      */
     query(queryText, values) {
-        return this.connect()
-            .flatMap(rxClient => rxClient.query(queryText, values));
+        return Rx.Observable.fromPromise(this._pool.query(queryText, values))
+            .do(() => util.log('RxPool: query executed'));
     }
 
     // /**

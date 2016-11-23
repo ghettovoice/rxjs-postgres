@@ -1,231 +1,238 @@
-import { assert } from 'chai';
+import chai, { expect } from 'chai';
 import sinon from 'sinon';
-import Rx from 'rxjs';
+import sinonChai from 'sinon-chai';
 import { ClientMock } from '../pgmock';
 import { RxClient, RxClientError } from '../../src';
 
-suite('RxClient Adapter tests', function () {
-    test('Test initialization', function () {
-        assert.throws(() => new RxClient({ query() {} }), RxClientError, 'Client must be instance of Client class');
+chai.use(sinonChai);
 
-        const client = new ClientMock();
-        const rxClient = new RxClient(client);
-
-        assert.strictEqual(rxClient.client, client);
-        assert.equal(rxClient.tlevel, 0);
-    });
-
-    suite('Connect / end tests', function () {
-        let client, rxClient;
-
-        setup(function () {
-            client = new ClientMock();
-            rxClient = new RxClient(client);
-
-            sinon.spy(client, 'connect');
-            sinon.spy(client, 'end');
+describe('RxClient Adapter tests', function () {
+    describe('Initialization', function () {
+        it('Should raise error on wrong constructor usage', function () {
+            expect(() => new RxClient({ query() {} })).to.throw(RxClientError, 'Client must be instance of Client class');
+            expect(() => new RxClient()).to.throw(RxClientError, 'Client must be instance of Client class');
+            expect(() => RxClient()).to.throw(TypeError, "Cannot call a class as a function");
         });
 
-        teardown(function (done) {
-            client.connect.restore();
-            client.end.restore();
+        it('Should be constructed with valid properties', function () {
+            const client = new ClientMock();
+            const rxClient = new RxClient(client);
 
-            client.end(done);
+            expect(rxClient.client).to.be.equal(client);
+            expect(rxClient.tlevel).to.be.equal(0);
+        });
+    });
 
+    describe('Work with client', function () {
+        let client, rxClient;
+
+        beforeEach(function () {
+            client = new ClientMock();
+            rxClient = new RxClient(client);
+        });
+
+        afterEach(function () {
             client = rxClient = undefined;
         });
 
-        test('Test with not connected pg client', function (done) {
-            rxClient.connect()
-                .do(rxClient_ => {
-                    assert.strictEqual(rxClient_, rxClient);
-                    assert.strictEqual(rxClient_.client, client);
-                    assert.ok(rxClient.connected);
-                    assert.equal(rxClient.tlevel, 0);
-                })
-                .flatMap(rxClient_ => rxClient_.connect())
-                .flatMap(rxClient_ => rxClient_.end())
-                .subscribe(
-                    rxClient_ => {
-                        assert.strictEqual(rxClient_, rxClient);
-                        assert.strictEqual(rxClient_.client, client);
-                        assert.notOk(rxClient.connected);
-                        assert.equal(rxClient.tlevel, 0);
-                        assert.ok(client.connect.calledOnce);
-                        assert.ok(client.end.calledOnce);
-                    },
-                    done,
-                    done
-                );
-        });
-
-        test('Test with already connected pg client', function (done) {
-            // connect pg client before calling RxClient.prototype.connect method
-            client.connect(err => {
-                if (err) {
-                    return done(err);
-                }
+        describe('Connect', function () {
+            it('Should connect not connected pg.Client and return Observable<RxClient>', function (done) {
+                sinon.spy(client, 'connect');
 
                 rxClient.connect()
-                    .do(rxClient_ => {
-                        assert.strictEqual(rxClient_, rxClient);
-                        assert.strictEqual(rxClient_.client, client);
-                        assert.ok(rxClient.connected);
-                        assert.strictEqual(rxClient.tlevel, 0);
-                    })
-                    .flatMap(rxClient_ => rxClient_.end())
-                    .flatMap(rxClient_ => rxClient_.end())
                     .subscribe(
                         rxClient_ => {
-                            assert.strictEqual(rxClient_, rxClient);
-                            assert.strictEqual(rxClient_.client, client);
-                            assert.notOk(rxClient.connected);
-                            assert.strictEqual(rxClient.tlevel, 0);
-                            assert.ok(client.connect.calledOnce);
-                            assert.ok(client.end.calledOnce);
+                            expect(rxClient_).to.be.equal(rxClient);
+                            expect(rxClient_.client).to.be.equal(client);
+                            expect(rxClient.connected).is.true;
+                            expect(rxClient.tlevel).to.be.equal(0);
+                            expect(client.connect).has.been.called;
                         },
                         done,
-                        done
+                        () => {
+                            client.connect.restore();
+                            client.end(done);
+                        }
+                    );
+            });
+
+            it('Should not call pg.Client connect if already connected', function (done) {
+                client.connect(function (err) {
+                    if (err) {
+                        return done(err);
+                    }
+
+                    sinon.spy(client, 'connect');
+
+                    rxClient.connect()
+                        .subscribe(
+                            rxClient_ => {
+                                expect(rxClient_).to.be.equal(rxClient);
+                                expect(rxClient_.client).to.be.equal(client);
+                                expect(rxClient.connected).is.true;
+                                expect(rxClient.tlevel).to.be.equal(0);
+                                expect(client.connect).has.not.been.called;
+                            },
+                            done,
+                            () => {
+                                client.connect.restore();
+                                client.end(done);
+                            }
+                        );
+                });
+            });
+
+            it('Should emit error when connection failed', function (done) {
+                sinon.stub(client, 'connect', function (cb) {
+                    cb(new Error('Failed'));
+                });
+
+                rxClient.connect()
+                    .subscribe(
+                        () => done(new Error('Should not be called')),
+                        err => {
+                            expect(err).is.instanceOf(Error);
+                            expect(client.connect).has.been.called;
+
+                            client.connect.restore();
+                            done();
+                        },
+                        () => done(new Error('Should not be called')),
                     );
             });
         });
-    });
 
-    suite('Test queries execution', function () {
-        let client, rxClient;
+        describe('Disconnect', function () {
+            it('Should disconnect client and return Observable<RxClient>', function (done) {
+                sinon.spy(client, 'end');
 
-        setup(function () {
-            client = new ClientMock();
-            rxClient = new RxClient(client);
+                rxClient.connect()
+                    .concatMap(rxClient_ => rxClient_.end())
+                    .subscribe(
+                        rxClient_ => {
+                            expect(rxClient).to.be.equal(rxClient);
+                            expect(rxClient_.client).to.be.equal(client);
+                            expect(rxClient.connected).is.false;
+                            expect(rxClient.tlevel).to.be.equal(0);
+                            expect(client.end).has.been.called;
+                        },
+                        done,
+                        () => {
+                            client.end.restore();
+                            client.end(done);
+                        }
+                    );
+            });
 
-            sinon.spy(client, 'connect');
-            sinon.spy(client, 'end');
-            sinon.spy(client, 'query');
+            it('Should not call disconnect if client not connected', function (done) {
+                sinon.spy(client, 'end');
+
+                rxClient.end()
+                    .subscribe(
+                        rxClient_ => {
+                            expect(rxClient).to.be.equal(rxClient);
+                            expect(rxClient_.client).to.be.equal(client);
+                            expect(rxClient.connected).is.false;
+                            expect(rxClient.tlevel).to.be.equal(0);
+                            expect(client.end).has.not.been.called;
+                        },
+                        done,
+                        () => {
+                            client.end.restore();
+                            done();
+                        }
+                    );
+            });
+
+            it('Should emit error when disconnect failed', function (done) {
+                sinon.stub(client, 'end', function (cb) {
+                    cb(new Error('Failed'));
+                });
+
+                rxClient.connect()
+                    .concatMap(rxClient_ => rxClient_.end())
+                    .subscribe(
+                        () => done(new Error('Should not be called')),
+                        err => {
+                            expect(err).is.instanceOf(Error);
+                            expect(client.end).has.been.called;
+
+                            client.end.restore();
+                            client.end(done);
+                        },
+                        () => done(new Error('Should not be called'))
+                    );
+            });
         });
 
-        teardown(function () {
-            client.connect.restore();
-            client.end.restore();
-            client.query.restore();
+        describe('Query execution', function () {
+            it('Should return query result object', function (done) {
+                sinon.spy(client, 'query');
 
-            client = rxClient = undefined;
-        });
+                rxClient.connect()
+                    .concatMap(rxClient_ => rxClient_.query('select $1 :: int col1, $2 :: text col2', [ 123, 'qwerty' ]))
+                    .subscribe(
+                        result => {
+                            expect(result).is.an('object');
+                            expect(result.rows).is.an('array');
+                            expect(result.rows).to.be.deep.equal([
+                                { col1: 123, col2: 'qwerty' }
+                            ]);
+                            expect(client.query).has.been.called;
+                            expect(client.query).has.been.calledWith('select $1 :: int col1, $2 :: text col2', [ 123, 'qwerty' ]);
+                        },
+                        done,
+                        () => {
+                            client.query.restore();
+                            client.end(done);
+                        }
+                    );
+            });
 
-        test('Test query with pre-connect', function (done) {
-            rxClient.connect()
-                .flatMap(rxClient_ => rxClient_.query("select $1 :: text str", [ 'qwerty' ]))
-                .flatMap(
-                    () => rxClient.end(),
-                    result => result
-                )
-                .subscribe(
-                    result => {
-                        assert.typeOf(result, 'object');
-                        assert.deepEqual(result.rows, [ {
-                            str: 'qwerty'
-                        } ]);
-                        assert.notOk(rxClient.connected);
-                        assert.strictEqual(rxClient.tlevel, 0);
-                        assert.deepEqual(client.queries, [ {
-                            queryText: "select $1 :: text str",
-                            values: [ 'qwerty' ]
-                        } ]);
-                        assert.ok(client.query.calledOnce);
-                    },
-                    done,
-                    done
-                );
-        });
+            it('Should connect before query if not already connected', function (done) {
+                sinon.spy(client, 'connect');
+                sinon.spy(client, 'query');
 
-        test('Test query with auto connect', function (done) {
-            rxClient.query("select $1 :: text str", [ 'qwerty' ])
-                .flatMap(
-                    () => rxClient.end(),
-                    result => result
-                )
-                .subscribe(
-                    result => {
-                        assert.typeOf(result, 'object');
-                        assert.deepEqual(result.rows, [ {
-                            str: 'qwerty'
-                        } ]);
-                        assert.notOk(rxClient.connected);
-                        assert.strictEqual(rxClient.tlevel, 0);
-                        assert.deepEqual(client.queries, [ {
-                            queryText: "select $1 :: text str",
-                            values: [ 'qwerty' ]
-                        } ]);
-                        assert.ok(client.query.calledOnce);
-                    },
-                    done,
-                    done
-                );
-        });
+                rxClient.query('select $1 :: int col1, $2 :: text col2', [ 123, 'qwerty' ])
+                    .subscribe(
+                        result => {
+                            expect(result).is.an('object');
+                            expect(result.rows).is.an('array');
+                            expect(result.rows).to.be.deep.equal([
+                                { col1: 123, col2: 'qwerty' }
+                            ]);
+                            expect(client.connect).has.been.called;
+                            expect(client.query).has.been.called;
+                            expect(client.query).has.been.calledWith('select $1 :: int col1, $2 :: text col2', [ 123, 'qwerty' ]);
+                        },
+                        done,
+                        () => {
+                            client.connect.restore();
+                            client.query.restore();
+                            client.end(done);
+                        }
+                    );
+            });
 
-        test('Test parallel queries', function (done) {
-            let i = 0;
+            it('Should raise error if query failed', function (done) {
+                sinon.spy(client, 'connect');
+                sinon.spy(client, 'query');
 
-            rxClient.connect()
-                .flatMap(() => Rx.Observable.zip(
-                    rxClient.query("select $1 :: text str", [ 'qwerty' ]),
-                    rxClient.query("select $1 :: int num, $2 :: text str", [ 2, 'name' ]),
-                    rxClient.query('select 123 col')
-                ))
-                .flatMap(
-                    () => rxClient.end(),
-                    results => results
-                )
-                .subscribe(
-                    results => {
-                        assert.ok(Array.isArray(results));
-                        assert.deepEqual(results.map(res => res.rows), [
-                            [ { str: 'qwerty' } ],
-                            [ { num: 2, str: 'name' } ],
-                            [ { col: 123 } ]
-                        ]);
+                rxClient.query('select $1 col1, $2 col2 from not_exists_schema.not_exists_table', [ 123, 'qwerty' ])
+                    .subscribe(
+                        () => done(new Error('Should not be called')),
+                        err => {
+                            expect(err).is.instanceOf(Error);
+                            expect(client.connect).has.been.called;
+                            expect(client.query).has.been.called;
 
-                        ++i;
-                    },
-                    done,
-                    () => {
-                        assert.strictEqual(i, 1);
-                        assert.notOk(rxClient.connected);
-                        assert.ok(client.connect.calledOnce);
-                        assert.ok(client.end.calledOnce);
-                        assert.strictEqual(client.query.callCount, 3);
-                        assert.deepEqual(client.queries, [
-                            { queryText: "select $1 :: text str", values: [ 'qwerty' ] },
-                            { queryText: "select $1 :: int num, $2 :: text str", values: [ 2, 'name' ] },
-                            { queryText: "select 123 col", values: undefined },
-                        ]);
-
-                        done();
-                    }
-                );
-        });
-
-        test('Test with failed query', function (done) {
-            let errThrown;
-
-            rxClient.query("select $1 :: text str", [ 'qwerty' ])
-                .flatMap(result => rxClient.query('select * from pg_tables where table_name = $1'))
-                .catch(err => {
-                    errThrown = err;
-
-                    return rxClient.end();
-                })
-                .subscribe(
-                    () => {
-                        assert.notOk(rxClient.connected);
-                        assert.ok(client.connect.calledOnce);
-                        assert.ok(client.end.calledOnce);
-                        assert.strictEqual(client.query.callCount, 2);
-                        assert.instanceOf(errThrown, Error);
-                        assert.equal(errThrown.message, 'column "table_name" does not exist');
-                    },
-                    done,
-                    done
-                );
+                            client.connect.restore();
+                            client.query.restore();
+                            client.end(done);
+                        },
+                        () => done(new Error('Should not be called')),
+                    );
+            });
         });
     });
 

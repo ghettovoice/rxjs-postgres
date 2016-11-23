@@ -61,18 +61,20 @@ var RxPool = function () {
 
 
         /**
-         * @param {boolean} [autoRelease=true] Wrap client as `Rx.Disposable` resource
          * @return {Observable<RxClient>}
          */
         value: function connect() {
-            var autoRelease = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
-            // todo change on true later
-            return _rxjs2.default.Observable.fromPromise(this._pool.connect()).flatMap(function (client) {
-                return autoRelease ? _rxjs2.default.Observable.using(function () {
-                    return new _RxClient2.default(client);
-                }, function (rxClient) {
-                    return _rxjs2.default.Observable.of(rxClient);
-                }) : _rxjs2.default.Observable.of(new _RxClient2.default(client));
+            return _rxjs2.default.Observable.fromPromise(this._pool.connect()).map(function (client) {
+                var rxClient = new _RxClient2.default(client);
+
+                rxClient.release = function (err) {
+                    util.log('RxClient: release');
+
+                    delete rxClient.release;
+                    client.release(err);
+                };
+
+                return rxClient;
             }).do(function () {
                 return util.log('RxPool: client connected');
             });
@@ -113,8 +115,8 @@ var RxPool = function () {
     }, {
         key: 'query',
         value: function query(queryText, values) {
-            return this.connect().flatMap(function (rxClient) {
-                return rxClient.query(queryText, values);
+            return _rxjs2.default.Observable.fromPromise(this._pool.query(queryText, values)).do(function () {
+                return util.log('RxPool: query executed');
             });
         }
 

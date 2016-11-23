@@ -58,50 +58,22 @@ var RxClient = function () {
 
 
     _createClass(RxClient, [{
-        key: 'release',
-
-
-        /**
-         * Releases client acquired from pool
-         *
-         * @param {Error} [err]
-         * @return {Observable<RxClient>}
-         */
-        value: function release(err) {
-            var _this = this;
-
-            typeof this._client.release === 'function' && this._client.release(err);
-            this._tlevel = 0;
-
-            return _rxjs2.default.Observable.create(function (subscriber) {
-                if (err) {
-                    _this._client.once('end', function () {
-                        subscriber.error(err);
-                        subscriber.complete();
-                    });
-                } else {
-                    subscriber.next(_this);
-                    subscriber.complete();
-                }
-            });
-        }
-
-        /**
-         * @return {Observable<RxClient>}
-         */
-
-    }, {
         key: 'connect',
+
+
+        /**
+         * @return {Observable<RxClient>}
+         */
         value: function connect() {
             var _context,
-                _this2 = this;
+                _this = this;
 
             if (this.connected) {
                 return _rxjs2.default.Observable.of(this);
             }
 
             var connect = _rxjs2.default.Observable.bindNodeCallback((_context = this._client).connect.bind(_context), function () {
-                return _this2;
+                return _this;
             });
 
             return connect().do(function () {
@@ -117,20 +89,19 @@ var RxClient = function () {
         key: 'end',
         value: function end() {
             var _context2,
-                _this3 = this;
+                _this2 = this;
 
             if (!this.connected) {
                 return _rxjs2.default.Observable.of(this);
             }
 
             var end = _rxjs2.default.Observable.bindNodeCallback((_context2 = this._client).end.bind(_context2), function () {
-                return _this3;
+                return _this2;
             });
+            this._tlevel = 0;
 
             return end().do(function () {
-                _this3._tlevel = 0;
-
-                util.log('RxClient: client ended');
+                return util.log('RxClient: client ended');
             });
         }
 
@@ -143,12 +114,12 @@ var RxClient = function () {
     }, {
         key: 'query',
         value: function query(queryText, values) {
-            var _this4 = this;
+            var _this3 = this;
 
             return this.connect().flatMap(function () {
                 var _context3;
 
-                var query = _rxjs2.default.Observable.bindNodeCallback((_context3 = _this4._client).query.bind(_context3));
+                var query = _rxjs2.default.Observable.bindNodeCallback((_context3 = _this3._client).query.bind(_context3));
 
                 return query(queryText, values);
             }).do(function () {
