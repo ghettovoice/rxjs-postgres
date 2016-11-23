@@ -61,8 +61,7 @@ export default class RxClient {
         return Rx.Observable.create(subscriber => {
             if (err) {
                 this._client.once('end', () => {
-                    // todo test what to emit: value or error?
-                    subscriber.next(this);
+                    subscriber.error(err);
                     subscriber.complete();
                 });
             } else {

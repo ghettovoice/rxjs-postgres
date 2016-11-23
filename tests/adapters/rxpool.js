@@ -81,22 +81,28 @@ suite('RxPool Adapter tests', function () {
                 })
                 .flatMap(
                     rxClient => rxClient.query('select SQL Syntax Error', [ 'qwe' ])
-                        .catch(err => {
-                            errThrown = err;
-
-                            return rxClient.release(err);
-                        })
+                        .flatMap(
+                            () => rxClient.release(),
+                            result => result
+                        )
+                        .catch(err => rxClient.release(err))
                         .do(() => {
                             assert.notOk(rxClient.connected);
                         }),
                     (rxClient, result) => ({ rxClient, result })
                 )
+                .catch(err => {
+                    errThrown = err;
+
+                    return Rx.Observable.empty();
+                })
                 .concatMap(
                     () => rxPool.end(),
                     prev => prev
                 )
                 .subscribe(
                     () => {
+                        console.log(1);
                         assert.instanceOf(errThrown, Error);
                         assert.equal(errThrown.message, 'syntax error at or near "Error"');
                         assert.strictEqual(pool.pool.getPoolSize(), 0);

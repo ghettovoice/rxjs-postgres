@@ -76,8 +76,7 @@ var RxClient = function () {
             return _rxjs2.default.Observable.create(function (subscriber) {
                 if (err) {
                     _this._client.once('end', function () {
-                        // todo test what to emit: value or error?
-                        subscriber.next(_this);
+                        subscriber.error(err);
                         subscriber.complete();
                     });
                 } else {
