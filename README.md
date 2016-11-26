@@ -4,6 +4,8 @@
 
 [![Build Status](https://travis-ci.org/ghettovoice/rxjs-postgres.svg?branch=master)](https://travis-ci.org/ghettovoice/rxjs-postgres)
 [![Coverage Status](https://coveralls.io/repos/github/ghettovoice/rxjs-postgres/badge.svg?branch=master)](https://coveralls.io/github/ghettovoice/rxjs-postgres?branch=master)
+[![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com)
+[![Documentation coverage](https://ghettovoice.github.io/rxjs-postgres/badge.svg)](https://ghettovoice.github.io/rxjs-postgres/)
 
 ## System requirements
 
@@ -15,20 +17,20 @@
 npm install --save rxjs-postgres
 ```
 
-## Test
+## Package commands
 
 ```bash
-# Only tests
-npm run test
+# run tests
+npm test
 
-# Tests with coverage
-npm run test:cover
+# compile sources
+npm run compile
+
+# generate documentation
+npm run doc
+# deploy documentation to GitHub Pages
+npm run doc:deploy
+
+# lint sources
+npm run lint
 ```
-
-## TODO
-
-- [ ] Implement custom Observable class with operators (connect / open, end, query & etc.) 
-- [ ] Write tests on error handling (sql errors, disconnects & etc)
-- [ ] Implement auto releasing of the acquired client from the pool (client as disposable resource)
-- [ ] Transaction helpers in RxClient and RxPool (tlevel handling on errors, disconnect & etc)
-- [ ] ES7 decorators to reactify `node-postgres`

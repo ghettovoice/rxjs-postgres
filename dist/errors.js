@@ -28,6 +28,9 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 /**
  * Error class for all client specific exceptions.
+ *
+ * @see {@link RxClient}
+ * @see {@link ExtendableError}
  */
 var RxClientError = exports.RxClientError = function (_ExtendableError) {
   _inherits(RxClientError, _ExtendableError);
@@ -43,6 +46,9 @@ var RxClientError = exports.RxClientError = function (_ExtendableError) {
 
 /**
  * Error class for all pool specific exceptions.
+ *
+ * @see {@link RxPool}
+ * @see {@link ExtendableError}
  */
 
 

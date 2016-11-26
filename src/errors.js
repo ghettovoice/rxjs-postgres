@@ -1,4 +1,4 @@
-import ExtendableError from 'es6-error';
+import ExtendableError from 'es6-error'
 /**
  * Library errors module.
  *
@@ -10,12 +10,18 @@ import ExtendableError from 'es6-error';
 
 /**
  * Error class for all client specific exceptions.
+ *
+ * @see {@link RxClient}
+ * @see {@link ExtendableError}
  */
 export class RxClientError extends ExtendableError {
 }
 
 /**
  * Error class for all pool specific exceptions.
+ *
+ * @see {@link RxPool}
+ * @see {@link ExtendableError}
  */
 export class RxPoolError extends ExtendableError {
 }

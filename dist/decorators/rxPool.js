@@ -1,18 +1,19 @@
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
-    value: true
+  value: true
 });
-exports.default = RxPool;
+exports.default = rxPool;
 /**
  * RxJs decorator for `pg.Client`.
  *
  * @param {Object} [options]
  * @return {Function}
+ * @ignore
  */
-function RxPool(options) {
-    return function (Pool) {
-        return Pool;
-    };
+function rxPool(options) {
+  return function (Pool) {
+    return Pool;
+  };
 }
-//# sourceMappingURL=rxpool.js.map
+//# sourceMappingURL=rxPool.js.map

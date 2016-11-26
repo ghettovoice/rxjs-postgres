@@ -7,5 +7,5 @@
  * @copyright (c) 2016, Vladimir Vershinin
  */
 
-export rxPool from './rxpool';
-export rxClient from './rxclient';
+export rxPool from './rxPool'
+export rxClient from './rxClient'

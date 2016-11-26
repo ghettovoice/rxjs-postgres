@@ -1,0 +1,13 @@
+{
+  "title": "rxjs-postgres",
+  "source": "./src",
+  "destination": "./docs",
+  "test": {
+    "type": "mocha",
+    "source": "./tests"
+  },
+  "undocumentIdentifier": false,
+  "plugins": [
+    { "name": "esdoc-es7-plugin" }
+  ]
+}
