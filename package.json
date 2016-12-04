@@ -9,7 +9,7 @@
   },
   "scripts": {
     "compile": "rm -rf dist && babel --source-maps -d dist src",
-    "test:db-deploy": "createdb -U postgres test && pg_restore -vFc -U postgres -d test ./tests/test.dump",
+    "test:db-deploy": "createdb -U postgres test && psql -U postgres -d test -f ./tests/test.sql",
     "test:coveralls": "cat ./coverage/lcov.info | coveralls ",
     "test:cover": "rm -rf ./coverage && npm run lint && istanbul cover _mocha -- --require babel-register --check-leaks './tests/**/*.js'",
     "test:mocha": "mocha --require babel-register --check-leaks './tests/**/*.js'",
