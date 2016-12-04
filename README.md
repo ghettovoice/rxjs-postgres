@@ -20,8 +20,12 @@ npm install --save rxjs-postgres
 ## Package commands
 
 ```bash
+# deploy test db before running test
+npm run test:db-deploy
 # run tests
 npm test
+# run test with coverage
+npm run test:cover
 
 # compile sources
 npm run compile
