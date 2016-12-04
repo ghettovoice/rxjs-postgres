@@ -2,17 +2,30 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.1
--- Dumped by pg_dump version 9.6.1
+-- Dumped from database version 9.5.5
+-- Dumped by pg_dump version 9.5.5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET check_function_bodies = false;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+
+
+--
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
 
 SET search_path = public, pg_catalog;
 
@@ -102,14 +115,14 @@ ALTER SEQUENCE test_id_seq OWNED BY main.id;
 
 
 --
--- Name: child id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY child ALTER COLUMN id SET DEFAULT nextval('child_id_seq'::regclass);
 
 
 --
--- Name: main id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY main ALTER COLUMN id SET DEFAULT nextval('test_id_seq'::regclass);
@@ -119,11 +132,9 @@ ALTER TABLE ONLY main ALTER COLUMN id SET DEFAULT nextval('test_id_seq'::regclas
 -- Data for Name: child; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY child (id, main_id, field) FROM stdin;
-1	1	field value
-2	1	field value 2
-3	2	super value
-\.
+INSERT INTO child VALUES (1, 1, 'field value');
+INSERT INTO child VALUES (2, 1, 'field value 2');
+INSERT INTO child VALUES (3, 2, 'super value');
 
 
 --
@@ -137,11 +148,9 @@ SELECT pg_catalog.setval('child_id_seq', 3, true);
 -- Data for Name: main; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY main (id, name) FROM stdin;
-1	row1
-2	row2
-3	another row
-\.
+INSERT INTO main VALUES (1, 'row1');
+INSERT INTO main VALUES (2, 'row2');
+INSERT INTO main VALUES (3, 'another row');
 
 
 --
@@ -152,7 +161,7 @@ SELECT pg_catalog.setval('test_id_seq', 3, true);
 
 
 --
--- Name: child child_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: child_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY child
@@ -160,7 +169,7 @@ ALTER TABLE ONLY child
 
 
 --
--- Name: main test_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: test_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY main
@@ -168,11 +177,21 @@ ALTER TABLE ONLY main
 
 
 --
--- Name: child child_main_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: child_main_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY child
     ADD CONSTRAINT child_main_id_fk FOREIGN KEY (main_id) REFERENCES main(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: public; Type: ACL; Schema: -; Owner: postgres
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
 --
