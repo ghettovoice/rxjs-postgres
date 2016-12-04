@@ -14,7 +14,7 @@ export class ClientMock extends pg.Client {
   constructor () {
     super({
       user: 'postgres',
-      database: 'postgres'
+      database: 'test'
     })
 
     this.queries = []

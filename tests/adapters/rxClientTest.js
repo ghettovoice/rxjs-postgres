@@ -408,6 +408,74 @@ describe('RxClient Adapter tests', function () {
             () => done(new Error('Should not be called')),
           )
       })
+
+      it('Should map result through projection function', function (done) {
+        rxClient.query(
+          'select * from main where id = $1',
+          [ 1 ],
+          result => result.rows.shift()
+        ).do(row => {
+          expect(row).to.be.deep.equal({ id: 1, name: 'row1' })
+        }).concatMap(() => rxClient.query(
+          'select * from child order by id',
+          result => result.rows
+        )).subscribe(
+          rows => {
+            expect(rows).to.be.deep.equal([
+              { id: 1, field: 'field value', main_id: 1 },
+              { id: 2, field: 'field value 2', main_id: 1 },
+              { id: 3, field: 'super value', main_id: 2 }
+            ])
+          },
+          done,
+          () => client.end(done)
+        )
+      })
+
+      it('Should return single row when use queryRow helper', function (done) {
+        rxClient.queryRow('select * from main where id = $1', [ 2 ])
+          .subscribe(
+            row => {
+              expect(row).to.be.deep.equal({ id: 2, name: 'row2' })
+            },
+            done,
+            () => client.end(done)
+          )
+      })
+
+      it('Should return array of rows when use queryRows helper', function (done) {
+        rxClient.queryRows('select * from child')
+          .subscribe(
+            rows => {
+              expect(rows).to.be.deep.equal([
+                { id: 1, field: 'field value', main_id: 1 },
+                { id: 2, field: 'field value 2', main_id: 1 },
+                { id: 3, field: 'super value', main_id: 2 }
+              ])
+            },
+            done,
+            () => client.end(done)
+          )
+      })
+
+      it('Should emit each row as separate value when use queryRowsFlat helper', function (done) {
+        const rows = []
+
+        rxClient.queryRowsFlat('select * from child')
+          .subscribe(
+            row => rows.push(row),
+            done,
+            () => {
+              expect(rows).to.be.deep.equal([
+                { id: 1, field: 'field value', main_id: 1 },
+                { id: 2, field: 'field value 2', main_id: 1 },
+                { id: 3, field: 'super value', main_id: 2 }
+              ])
+
+              client.end(done)
+            }
+          )
+      })
     })
 
     // todo add more complex

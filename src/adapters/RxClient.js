@@ -24,7 +24,7 @@ import * as util from '../util'
  * // get multiple records from the database (connection will be opened automatically on the first query call)
  * rxClient.queryRowsFlat('select * from main'))
  *   .subscribe(
- *     record => console.log('NEXT', record),
+ *     row => console.log('NEXT', row),
  *     err => console.error('ERROR', err.stack),
  *     () => console.log('COMPLETE')
  *   )
@@ -49,14 +49,14 @@ export default class RxClient {
    * rxClient.queryRow('select * from main where id = $1', [ 1 ])
    *   // then load some additional related records
    *   .flatMap(
-   *     mainRecord => rxClient.queryRows(
+   *     mainRow => rxClient.queryRows(
    *       'select * from child where main_id = $1',
-   *       [ mainRecord.id ]
+   *       [ mainRow.id ]
    *     ),
-   *     (mainRecord, childRecords) => ({ ...mainRecord, childRecords })
+   *     (mainRow, children) => ({ ...mainRow, children })
    *   )
    *   .subscribe(
-   *     mainRecord => console.log('NEXT', mainRecord),
+   *     mainRow => console.log('NEXT', mainRow),
    *     err => console.error('ERROR', err.message),
    *     () => console.log('COMPLETE')
    *   )
@@ -168,7 +168,7 @@ export default class RxClient {
    * @example <caption>Connect to the database</caption>
    * rxClient.connect()
    *   .subscribe(
-   *     result => console.log('NEXT', 'Connection opened'),
+   *     x => console.log('NEXT', 'Connection opened'),
    *     err => console.error('ERROR', err.message),
    *     () => console.log('COMPLETE', 'Connection opened')
    *   )
@@ -226,7 +226,7 @@ export default class RxClient {
    * rxClient.connect()
    *   .concat(rxClient.end())
    *   .subscribe(
-   *     rxClient => console.log('NEXT', 'Connection closed'),
+   *     x => console.log('NEXT', 'Connection closed'),
    *     err => console.error('ERROR', err.message),
    *     () => console.log('COMPLETE', 'Connection closed')
    *   )
@@ -281,9 +281,9 @@ export default class RxClient {
    * @example <caption>Map result to the first row</caption>
    * rxClient.query(
    *   'select * from main',
-   *   result => Observable.from(result.rows[0])
+   *   result => result.rows.slice().shift()
    * ).subscribe(
-   *   record => console.log('NEXT', record),
+   *   firstRow => console.log('NEXT', firstRow),
    *   err => console.error('ERROR', err.message),
    *   () => console.log('COMPLETE', 'Query executed')
    * )
@@ -292,7 +292,7 @@ export default class RxClient {
    *   'select * from main',
    *   result => Observable.from(result.rows.slice())
    * ).subscribe(
-   *   record => console.log('NEXT', record),
+   *   row => console.log('NEXT', row),
    *   err => console.error('ERROR', err.message),
    *   () => console.log('COMPLETE', 'Query executed')
    * )
@@ -407,20 +407,20 @@ export default class RxClient {
    *   ))
    *   // work with inserted record
    *   .mergeMap(
-   *     record => Observable.concat(
+   *     insertedRow => Observable.concat(
    *       rxClient.begin(), // RxClient#txLevel = 2
    *       // try to execute invalid query
    *       rxClient.queryRow(
    *         'update main set (id, name) = ($1, $2) where id = $3 returning *',
-   *         [ 1, 'qwerty new name', record.id ]
+   *         [ 1, 'qwerty new name', insertedRow.id ]
    *       ),
    *       rxClient.commit() // RxClient#txLevel = 1
-   *     ).catch(() => rxClient.rollback(record)) // rollback to the last savepoint if query failed
+   *     ).catch(() => rxClient.rollback(insertedRow)) // rollback to the last savepoint if query failed
    *   )
    *   // commit the top level transaction
-   *   .mergeMap(record => rxClient.commit(record, true)) // RxClient#txLevel = 0
+   *   .mergeMap(row => rxClient.commit(row, true)) // RxClient#txLevel = 0
    *   .subscribe(
-   *     record => console.log('NEXT', record),
+   *     row => console.log('NEXT', row),
    *     err => console.error('ERROR', err.message),
    *     () => console.log('COMPLETE')
    *   )
@@ -482,20 +482,20 @@ export default class RxClient {
    *   ))
    *   // work with inserted record
    *   .mergeMap(
-   *     record => Observable.concat(
+   *     insertedRow => Observable.concat(
    *       rxClient.begin(), // RxClient#txLevel = 2
    *       // try to execute invalid query
    *       rxClient.queryRow(
    *         'update main set (id, name) = ($1, $2) where id = $3 returning *',
-   *         [ 1, 'qwerty new name', record.id ]
+   *         [ 1, 'qwerty new name', insertedRow.id ]
    *       ),
    *       rxClient.commit() // RxClient#txLevel = 1
-   *     ).catch(() => rxClient.rollback(record)) // rollback to the last savepoint if query failed
+   *     ).catch(() => rxClient.rollback(insertedRow)) // rollback to the last savepoint if query failed
    *   )
    *   // commit the top level transaction
-   *   .mergeMap(record => rxClient.commit(record, true)) // RxClient#txLevel = 0
+   *   .mergeMap(row => rxClient.commit(row, true)) // RxClient#txLevel = 0
    *   .subscribe(
-   *     record => console.log('NEXT', record),
+   *     row => console.log('NEXT', row),
    *     err => console.error('ERROR', err.message),
    *     () => console.log('COMPLETE')
    *   )
@@ -563,20 +563,20 @@ export default class RxClient {
    *   ))
    *   // work with inserted record
    *   .mergeMap(
-   *     record => Observable.concat(
+   *     insertedRow => Observable.concat(
    *       rxClient.begin(), // RxClient#txLevel = 2
    *       // try to execute invalid query
    *       rxClient.queryRow(
    *         'update main set (id, name) = ($1, $2) where id = $3 returning *',
-   *         [ 1, 'qwerty new name', record.id ]
+   *         [ 1, 'qwerty new name', insertedRow.id ]
    *       ),
    *       rxClient.commit() // RxClient#txLevel = 1
-   *     ).catch(() => rxClient.rollback(record)) // rollback to the last savepoint if query failed
+   *     ).catch(() => rxClient.rollback(insertedRow)) // rollback to the last savepoint if query failed
    *   )
    *   // commit the top level transaction
-   *   .mergeMap(record => rxClient.commit(record, true)) // RxClient#txLevel = 0
+   *   .mergeMap(row => rxClient.commit(row, true)) // RxClient#txLevel = 0
    *   .subscribe(
-   *     record => console.log('NEXT', record),
+   *     row => console.log('NEXT', row),
    *     err => console.error('ERROR', err.message),
    *     () => console.log('COMPLETE')
    *   )
@@ -629,6 +629,8 @@ export default class RxClient {
   }
 
   _restoreLevel () {
-    this._txLevel = this._savedTxLevel
+    if (this._savedTxLevel != null) {
+      this._txLevel = this._savedTxLevel
+    }
   }
 }
