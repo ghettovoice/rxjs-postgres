@@ -476,6 +476,29 @@ describe('RxClient Adapter tests', function () {
             }
           )
       })
+
+      it('Should run queries sequentially in order of RxClient#query call', function (done) {
+        rxClient.query('select current_timestamp')
+          .merge(
+            rxClient.query('select * from main'),
+            rxClient.query('select * from child')
+          )
+          .concat(rxClient.query('select $1 :: text', [ 'qwerty' ]))
+          .subscribe(
+            () => {},
+            done,
+            () => {
+              expect(client.queries).to.be.deep.equal([
+                { queryText: 'select current_timestamp', values: undefined },
+                { queryText: 'select * from main', values: undefined },
+                { queryText: 'select * from child', values: undefined },
+                { queryText: 'select $1 :: text', values: [ 'qwerty' ] }
+              ])
+
+              client.end(done)
+            }
+          )
+      })
     })
 
     // todo add more complex
