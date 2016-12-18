@@ -131,7 +131,8 @@ describe('RxClient Adapter tests', function () {
 
             client.connect.restore()
             client.end(done)
-          }
+          },
+          error: done
         })
       })
 
@@ -245,7 +246,8 @@ describe('RxClient Adapter tests', function () {
 
             client.end.restore()
             done()
-          }
+          },
+          error: done
         })
       })
 
@@ -499,6 +501,30 @@ describe('RxClient Adapter tests', function () {
             }
           )
       })
+
+      it('Should replay result and share subscriptions', function (done) {
+        sinon.spy(client, 'query')
+
+        let source = rxClient.queryRows('select * from pg_catalog.pg_tables')
+
+        source.subscribe(x => {
+          expect(x).is.an('array')
+        }, done)
+
+        source.subscribe(x => {
+          expect(x).is.an('array')
+        }, done)
+
+        source.subscribe({
+          complete: () => {
+            expect(client.query).has.been.calledOnce
+
+            client.query.restore()
+            client.end(done)
+          },
+          error: done
+        })
+      })
     })
 
     // todo add more complex
@@ -509,11 +535,12 @@ describe('RxClient Adapter tests', function () {
         sinon.spy(client, 'query')
 
         rxClient.begin()
+          .do(() => done('Should not been called. Should ignores elements by default'))
           .concat(rxClient.begin())
           .concat(rxClient.begin())
           .subscribe(
-            x => {
-              expect(x).is.true
+            () => {
+              done(new Error('Should not been called. Should ignores elements by default'))
             },
             done,
             () => {
@@ -536,23 +563,47 @@ describe('RxClient Adapter tests', function () {
       it('Should save transaction level if error raised', function (done) {
         rxClient.begin()
           .concat(rxClient.query('select current_timestamp'))
-          .do(() => {
+          .mergeMap(x => {
             sinon.stub(client, 'query', function (queryText, values, cb) {
               cb(new Error('Failed'))
             })
-          })
-          .mergeMap(x => rxClient.begin(x))
-          .subscribe(
-            () => done(new Error('Should not be called')),
-            err => {
-              expect(err).is.instanceOf(Error)
-              expect(err.message).to.be.equal('Failed')
-              expect(rxClient.txLevel).to.be.equal(1)
 
-              client.query.restore()
+            return rxClient.query('broken query')
+          })
+          .mergeMap(x => {
+            done(new Error('Should not been called'))
+            return rxClient.begin(x)
+          })
+          .catch(err => {
+            expect(err).is.instanceOf(Error)
+            expect(err.message).to.be.equal('Failed')
+            expect(rxClient.txLevel).to.be.equal(1)
+
+            client.query.restore()
+
+            return rxClient.rollback()
+          })
+          .subscribe(
+            () => {},
+            done,
+            () => {
+              expect(rxClient.txLevel).to.be.equal(0)
+
               client.end(done)
+            }
+          )
+      })
+
+      it('Should map to provided argument', function (done) {
+        const obj = {}
+
+        rxClient.begin(obj)
+          .subscribe(
+            x => {
+              expect(x).to.be.equal(obj)
             },
-            () => done(new Error('Should not be called'))
+            done,
+            done
           )
       })
     })

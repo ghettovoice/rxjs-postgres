@@ -8,12 +8,12 @@
     "test": "tests"
   },
   "scripts": {
-    "compile": "rm -rf dist && babel --source-maps -d dist src",
+    "compile": "npm run lint && rm -rf dist && babel --source-maps -d dist src",
     "test:db-deploy": "createdb -U postgres test && psql -U postgres -d test -f ./tests/test.sql > /dev/null",
     "test:coveralls": "cat ./coverage/lcov.info | coveralls ",
-    "test:cover": "rm -rf ./coverage && npm run lint && istanbul cover _mocha -- --require babel-register --check-leaks './tests/**/*.js'",
-    "test:mocha": "mocha --require babel-register --check-leaks './tests/**/*.js'",
-    "test": "npm run lint && npm run test:mocha",
+    "test:cover": "npm run lint && rm -rf ./coverage && istanbul cover _mocha -- --require babel-register --check-leaks './tests/**/*.js'",
+    "test:mocha": "npm run lint && mocha --require babel-register --check-leaks './tests/**/*.js'",
+    "test": "npm run test:cover",
     "doc": "rm -rf ./docs && esdoc -c ./esdoc.json",
     "doc:deploy": "gh-pages -d ./docs -m 'Generate new docs'",
     "lint": "eslint --ext .js ./src ./tests"
@@ -36,7 +36,7 @@
   "homepage": "https://ghettovoice.github.io/rxjs-postgres/",
   "devDependencies": {
     "babel-cli": "^6.18.0",
-    "babel-core": "^6.18.2",
+    "babel-core": "^6.21.0",
     "babel-eslint": "^7.1.1",
     "babel-preset-latest": "^6.16.0",
     "babel-preset-stage-0": "^6.16.0",
@@ -46,22 +46,21 @@
     "coveralls": "^2.11.15",
     "esdoc": "^0.4.8",
     "esdoc-es7-plugin": "0.0.3",
-    "eslint": "^3.11.1",
+    "eslint": "^3.12.2",
     "eslint-config-standard": "^6.2.1",
     "eslint-friendly-formatter": "^2.0.6",
     "eslint-plugin-promise": "^3.4.0",
     "eslint-plugin-standard": "^2.0.1",
     "gh-pages": "^0.12.0",
     "istanbul": "^1.1.0-alpha.1",
-    "mocha": "^3.1.2",
+    "mocha": "^3.2.0",
     "sinon": "^1.17.6",
     "sinon-chai": "^2.8.0"
   },
   "dependencies": {
     "es6-error": "^4.0.0",
-    "lodash.isfunction": "^3.0.8",
-    "pg": "^6.1.0",
-    "rxjs": "^5.0.0-rc.4",
+    "pg": "^6.1.2",
+    "rxjs": "^5.0.1",
     "stack-trace": "0.0.9"
   },
   "files": [
@@ -69,8 +68,6 @@
     "README.md",
     "dist",
     "src",
-    "tests",
-    "types"
-  ],
-  "typings": "types/index"
+    "tests"
+  ]
 }

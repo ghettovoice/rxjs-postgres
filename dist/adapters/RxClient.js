@@ -14,10 +14,6 @@ var _pg = require('pg');
 
 var _rxjs = require('rxjs');
 
-var _lodash = require('lodash.isfunction');
-
-var _lodash2 = _interopRequireDefault(_lodash);
-
 var _errors = require('../errors');
 
 var _util = require('../util');
@@ -30,10 +26,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+// todo Try all examples! and add tests to cover use cases from examples.
+// todo Try to use rxjs Subject as single source of values, subscribe it to each async operation
+// and manually emit results for it's observers, manually complete after closing connection etc...
 /**
  * Standalone adapter for `node-postgres` {@link Client} class with Reactive API.
- *
- * @todo Try all examples! and add tests to cover use cases from examples.
  *
  * @example <caption>Basic usage</caption>
  * import { Client } from 'pg'
@@ -56,9 +53,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  *
  * @see {@link RxPool}
  * @see {@link Client}
- *
- * @todo Try to use rxjs Subject behind the scene as single source of values, subscribe it to each async operation
- *    and manually emit results for it's observers, manually complete after closing connection etc...
  */
 var RxClient = function () {
   /**
@@ -337,7 +331,7 @@ var RxClient = function () {
     value: function query(queryText, values, projectFunction) {
       var _this2 = this;
 
-      if ((0, _lodash2.default)(values)) {
+      if (typeof values === 'function') {
         projectFunction = values;
       }
 
@@ -348,10 +342,13 @@ var RxClient = function () {
 
         return query(queryText, values);
       }).do(function () {
-        return util.log('RxClient: query executed', queryText, _this2._txLevel);
+        _this2._commitTxLevel();
+        util.log('RxClient: query executed', queryText, _this2._txLevel);
       }, function () {
-        _this2._restoreLevel();
+        _this2._rollbackTxLevel();
         _this2._querySource = undefined;
+      }, function () {
+        return console.log('complete', queryText);
       }).publishReplay().refCount();
 
       var source = this._querySource;
@@ -484,7 +481,7 @@ var RxClient = function () {
       (0, _assert2.default)(this._txLevel >= 0, 'Current transaction level >= 0');
 
       var begin = function begin() {
-        _this3._savedTxLevel = _this3._txLevel;
+        _this3._commitTxLevel();
 
         var query = void 0;
         if (_this3._txLevel === 0) {
@@ -571,7 +568,7 @@ var RxClient = function () {
           throw new _errors.RxClientError('The transaction is not open on the client');
         }
 
-        _this4._savedTxLevel = _this4._txLevel;
+        _this4._commitTxLevel();
 
         var query = void 0;
         if (_this4._txLevel === 1 || force) {
@@ -657,7 +654,7 @@ var RxClient = function () {
           throw new _errors.RxClientError('The transaction is not opened on the client');
         }
 
-        _this5._savedTxLevel = _this5._txLevel;
+        _this5._commitTxLevel();
 
         var query = void 0;
         if (_this5._txLevel === 1 || force) {
@@ -679,12 +676,25 @@ var RxClient = function () {
 
       return source;
     }
+
+    /**
+     * @private
+     */
+
   }, {
-    key: '_restoreLevel',
-    value: function _restoreLevel() {
-      if (this._savedTxLevel != null) {
-        this._txLevel = this._savedTxLevel;
-      }
+    key: '_commitTxLevel',
+    value: function _commitTxLevel() {
+      this._savedTxLevel = this._txLevel;
+    }
+
+    /**
+     * @private
+     */
+
+  }, {
+    key: '_rollbackTxLevel',
+    value: function _rollbackTxLevel() {
+      this._txLevel = this._savedTxLevel;
     }
   }, {
     key: 'client',

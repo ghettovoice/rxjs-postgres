@@ -43,13 +43,6 @@ class LogSubscriber extends Subscriber {
 /**************************************
  Checked, add to tests
  ***************************************/
-// let source = rxClient.connect()
-//   .delay(500)
-//   .concat(rxClient.end())
-//
-// source.subscribe(new LogSubscriber(1))
-// setTimeout(() => source.subscribe(new LogSubscriber(2)), 500)
-
 // // RxClient#txLevel = 0
 // // begin new transaction
 // rxClient.begin() // RxClient#txLevel = 1

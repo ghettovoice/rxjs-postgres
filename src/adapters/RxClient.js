@@ -1,14 +1,14 @@
 import assert from 'assert'
 import { Client } from 'pg'
 import { Observable } from 'rxjs'
-import isFunction from 'lodash.isfunction'
 import { RxClientError } from '../errors'
 import * as util from '../util'
 
+// todo Try all examples! and add tests to cover use cases from examples.
+// todo Try to use rxjs Subject as single source of values, subscribe it to each async operation
+// and manually emit results for it's observers, manually complete after closing connection etc...
 /**
  * Standalone adapter for `node-postgres` {@link Client} class with Reactive API.
- *
- * @todo Try all examples! and add tests to cover use cases from examples.
  *
  * @example <caption>Basic usage</caption>
  * import { Client } from 'pg'
@@ -31,9 +31,6 @@ import * as util from '../util'
  *
  * @see {@link RxPool}
  * @see {@link Client}
- *
- * @todo Try to use rxjs Subject behind the scene as single source of values, subscribe it to each async operation
- *    and manually emit results for it's observers, manually complete after closing connection etc...
  */
 export default class RxClient {
   /**
@@ -310,7 +307,7 @@ export default class RxClient {
    *      whatever returned by the `projectFunction`.
    */
   query (queryText, values, projectFunction) {
-    if (isFunction(values)) {
+    if (typeof values === 'function') {
       projectFunction = values
     }
 
@@ -321,11 +318,15 @@ export default class RxClient {
         return query(queryText, values)
       })
       .do(
-        () => util.log('RxClient: query executed', queryText, this._txLevel),
         () => {
-          this._restoreLevel()
+          this._commitTxLevel()
+          util.log('RxClient: query executed', queryText, this._txLevel)
+        },
+        () => {
+          this._rollbackTxLevel()
           this._querySource = undefined
-        }
+        },
+        () => console.log('complete', queryText)
       )
       .publishReplay()
       .refCount()
@@ -442,7 +443,7 @@ export default class RxClient {
     assert(this._txLevel >= 0, 'Current transaction level >= 0')
 
     const begin = () => {
-      this._savedTxLevel = this._txLevel
+      this._commitTxLevel()
 
       let query
       if (this._txLevel === 0) {
@@ -524,7 +525,7 @@ export default class RxClient {
         throw new RxClientError('The transaction is not open on the client')
       }
 
-      this._savedTxLevel = this._txLevel
+      this._commitTxLevel()
 
       let query
       if (this._txLevel === 1 || force) {
@@ -605,7 +606,7 @@ export default class RxClient {
         throw new RxClientError('The transaction is not opened on the client')
       }
 
-      this._savedTxLevel = this._txLevel
+      this._commitTxLevel()
 
       let query
       if (this._txLevel === 1 || force) {
@@ -628,9 +629,17 @@ export default class RxClient {
     return source
   }
 
-  _restoreLevel () {
-    if (this._savedTxLevel != null) {
-      this._txLevel = this._savedTxLevel
-    }
+  /**
+   * @private
+   */
+  _commitTxLevel () {
+    this._savedTxLevel = this._txLevel
+  }
+
+  /**
+   * @private
+   */
+  _rollbackTxLevel () {
+    this._txLevel = this._savedTxLevel
   }
 }
