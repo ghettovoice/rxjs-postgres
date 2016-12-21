@@ -31,9 +31,11 @@ npm run test:cover
 npm run compile
 
 # generate documentation
-npm run doc
+npm run doc:gen
 # deploy documentation to GitHub Pages
 npm run doc:deploy
+# all in one command
+npm run doc
 
 # lint sources
 npm run lint
