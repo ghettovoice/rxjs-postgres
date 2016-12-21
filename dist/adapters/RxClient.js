@@ -27,8 +27,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 // todo Try all examples! and add tests to cover use cases from examples.
-// todo Try to use rxjs Subject as single source of values, subscribe it to each async operation
-// and manually emit results for it's observers, manually complete after closing connection etc...
 /**
  * Standalone adapter for `node-postgres` {@link Client} class with Reactive API.
  *
@@ -44,7 +42,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  * }))
  *
  * // get multiple records from the database (connection will be opened automatically on the first query call)
- * rxClient.queryRowsFlat('select * from main'))
+ * rxClient.queryRowsSeq('select * from main'))
  *   .subscribe(
  *     row => console.log('NEXT', row),
  *     err => console.error('ERROR', err.stack),
@@ -53,6 +51,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  *
  * @see {@link RxPool}
  * @see {@link Client}
+ *
+ * @todo helpers for column value selection
  */
 var RxClient = function () {
   /**
@@ -315,7 +315,7 @@ var RxClient = function () {
      *
      * @see {@link RxClient#queryRow}
      * @see {@link RxClient#queryRows}
-     * @see {@link RxClient#queryRowsFlat}
+     * @see {@link RxClient#queryRowsSeq}
      *
      * @param {string} queryText SQL string.
      * @param {Array|function(x: Result): *} [values] Array of query arguments or projection function.
@@ -347,8 +347,6 @@ var RxClient = function () {
       }, function () {
         _this2._rollbackTxLevel();
         _this2._querySource = undefined;
-      }, function () {
-        return console.log('complete', queryText);
       }).publishReplay().refCount();
 
       var source = this._querySource;
@@ -368,7 +366,7 @@ var RxClient = function () {
      *
      * @see {@link RxClient#query}
      * @see {@link RxClient#queryRows}
-     * @see {@link RxClient#queryRowsFlat}
+     * @see {@link RxClient#queryRowsSeq}
      *
      * @param {string} queryText SQL string.
      * @param {Array} [values] Array of query arguments.
@@ -389,7 +387,7 @@ var RxClient = function () {
      *
      * @see {@link RxClient#query}
      * @see {@link RxClient#queryRow}
-     * @see {@link RxClient#queryRowsFlat}
+     * @see {@link RxClient#queryRowsSeq}
      *
      * @param {string} queryText SQL string.
      * @param {Array} [values] Array of query arguments.
@@ -419,8 +417,8 @@ var RxClient = function () {
      */
 
   }, {
-    key: 'queryRowsFlat',
-    value: function queryRowsFlat(queryText, values) {
+    key: 'queryRowsSeq',
+    value: function queryRowsSeq(queryText, values) {
       return this.query(queryText, values, function (result) {
         return _rxjs.Observable.from(result.rows.slice());
       });

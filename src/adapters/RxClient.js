@@ -5,8 +5,6 @@ import { RxClientError } from '../errors'
 import * as util from '../util'
 
 // todo Try all examples! and add tests to cover use cases from examples.
-// todo Try to use rxjs Subject as single source of values, subscribe it to each async operation
-// and manually emit results for it's observers, manually complete after closing connection etc...
 /**
  * Standalone adapter for `node-postgres` {@link Client} class with Reactive API.
  *
@@ -22,7 +20,7 @@ import * as util from '../util'
  * }))
  *
  * // get multiple records from the database (connection will be opened automatically on the first query call)
- * rxClient.queryRowsFlat('select * from main'))
+ * rxClient.queryRowsSeq('select * from main'))
  *   .subscribe(
  *     row => console.log('NEXT', row),
  *     err => console.error('ERROR', err.stack),
@@ -31,6 +29,8 @@ import * as util from '../util'
  *
  * @see {@link RxPool}
  * @see {@link Client}
+ *
+ * @todo helpers for column value selection
  */
 export default class RxClient {
   /**
@@ -296,7 +296,7 @@ export default class RxClient {
    *
    * @see {@link RxClient#queryRow}
    * @see {@link RxClient#queryRows}
-   * @see {@link RxClient#queryRowsFlat}
+   * @see {@link RxClient#queryRowsSeq}
    *
    * @param {string} queryText SQL string.
    * @param {Array|function(x: Result): *} [values] Array of query arguments or projection function.
@@ -325,8 +325,7 @@ export default class RxClient {
         () => {
           this._rollbackTxLevel()
           this._querySource = undefined
-        },
-        () => console.log('complete', queryText)
+        }
       )
       .publishReplay()
       .refCount()
@@ -350,7 +349,7 @@ export default class RxClient {
    *
    * @see {@link RxClient#query}
    * @see {@link RxClient#queryRows}
-   * @see {@link RxClient#queryRowsFlat}
+   * @see {@link RxClient#queryRowsSeq}
    *
    * @param {string} queryText SQL string.
    * @param {Array} [values] Array of query arguments.
@@ -366,7 +365,7 @@ export default class RxClient {
    *
    * @see {@link RxClient#query}
    * @see {@link RxClient#queryRow}
-   * @see {@link RxClient#queryRowsFlat}
+   * @see {@link RxClient#queryRowsSeq}
    *
    * @param {string} queryText SQL string.
    * @param {Array} [values] Array of query arguments.
@@ -389,7 +388,7 @@ export default class RxClient {
    *
    * @return {Observable<Object>} {@link Observable} sequence of rows returned by the query.
    */
-  queryRowsFlat (queryText, values) {
+  queryRowsSeq (queryText, values) {
     return this.query(queryText, values, result => Observable.from(result.rows.slice()))
   }
 

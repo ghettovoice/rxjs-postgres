@@ -3,8 +3,12 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 exports.datetime = datetime;
 exports.log = log;
+exports.values = values;
 
 var _path = require('path');
 
@@ -72,5 +76,18 @@ function log(message) {
 
     (_console = console).log.apply(_console, [_chalk2.default.cyan('[ ' + Date.now() /* datetime() */ + ' ' + _chalk2.default.grey(callerFile + ':' + callerFileLine) + ' ]'), _chalk2.default.blue(message)].concat(args));
   }
+}
+
+/**
+ * @param {Object} obj
+ * @return {Array}
+ */
+function values(obj) {
+  if (obj == null && (typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) !== 'object') return [];
+  if (Array.isArray(obj)) return obj.slice();
+
+  return Object.keys(obj).map(function (key) {
+    return obj[key];
+  });
 }
 //# sourceMappingURL=util.js.map

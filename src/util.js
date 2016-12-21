@@ -57,3 +57,14 @@ export function log (message, ...args) {
     )
   }
 }
+
+/**
+ * @param {Object} obj
+ * @return {Array}
+ */
+export function values (obj) {
+  if (obj == null && typeof obj !== 'object') return []
+  if (Array.isArray(obj)) return obj.slice()
+
+  return Object.keys(obj).map(key => obj[ key ])
+}
