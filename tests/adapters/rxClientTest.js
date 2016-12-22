@@ -334,6 +334,7 @@ describe('RxClient Adapter tests', function () {
       sinon.spy(client, 'connect')
 
       rxClient.connect()
+        .delay(20)
         .merge(rxClient.errors.flatMap(Observable.throw))
         .subscribe(
           () => done(new Error('Should not be called')),
@@ -347,7 +348,7 @@ describe('RxClient Adapter tests', function () {
           () => done(new Error('Should not be called')),
         )
 
-      setTimeout(() => client.emit('error', new Error('Failed')), 1)
+      setTimeout(() => client.emit('error', new Error('Failed')), 10)
     })
   })
 
@@ -595,13 +596,16 @@ describe('RxClient Adapter tests', function () {
 
           client.query.restore()
 
-          return rxClient.rollback()
+          return rxClient.queryRow('select 123 val')
         })
         .subscribe(
-          () => {},
+          x => {
+            expect(x).is.an('object')
+            expect(x.val).to.be.equal(123)
+          },
           done,
           () => {
-            expect(rxClient.txLevel).to.be.equal(0)
+            expect(rxClient.txLevel).to.be.equal(1)
 
             client.end(done)
           }
@@ -625,7 +629,7 @@ describe('RxClient Adapter tests', function () {
   /** @test {RxClient#commit} */
   describe('Commit transaction', function () {
     it('Should throw error when called without opened transaction', function () {
-      expect(() => rxClient.commit()).to.throws(RxClientError, 'The transaction is not open on the client')
+      expect(() => rxClient.commit()).to.throws(RxClientError, 'The transaction is not opened on the client')
       expect(rxClient.txLevel).to.be.equal(0)
     })
 
@@ -683,176 +687,198 @@ describe('RxClient Adapter tests', function () {
           }
         })
     })
+
+    it('Should map to provided argument', function (done) {
+      const obj = {}
+
+      rxClient.begin(obj)
+        .delay(10)
+        .mergeMap(x => rxClient.commit(x))
+        .subscribe(
+          x => {
+            expect(x).to.be.equal(obj)
+            expect(rxClient.txLevel).to.be.equal(0)
+          },
+          done,
+          done
+        )
+    })
+
+    it('Should commit transaction with all savepoints when called in force mode', function (done) {
+      sinon.spy(client, 'query')
+
+      rxClient.begin()
+        .concat(rxClient.query('select 1'))
+        .concat(rxClient.begin())
+        .concat(rxClient.query('select 2'))
+        .concat(rxClient.begin())
+        .concat(rxClient.query('select 3'))
+        .concat(rxClient.commit())
+        .concat(rxClient.commit(undefined, true))
+        .subscribe({
+          complete: () => {
+            expect(client.query).has.callCount(8)
+            expect(client.queries.map(q => q.queryText)).to.be.deep.equal([
+              'begin',
+              'select 1',
+              'savepoint point_1',
+              'select 2',
+              'savepoint point_2',
+              'select 3',
+              'release savepoint point_2',
+              'commit'
+            ])
+            expect(rxClient.txLevel).to.be.equal(0)
+
+            client.query.restore()
+            client.end(done)
+          }
+        })
+    })
   })
 
-  // test('Test commit', function (done) {
-  //     const client = new ClientMock();
-  //     const rxClient = new RxClient(client);
-  //
-  //     assert.throws(::rxClient.commit, RxClientError, 'The transaction is not open on the client');
-  //
-  //     Rx.Observable.zip(
-  //         rxClient.begin(),
-  //         rxClient.begin(),
-  //         rxClient.begin(),
-  //         rxClient_ => rxClient_
-  //     ).flatMap(rxClient_ => rxClient_.commit())
-  //         .do(rxClient_ => {
-  //             assert.strictEqual(rxClient_, rxClient);
-  //             assert.strictEqual(rxClient_.client, client);
-  //             assert.strictEqual(rxClient_.txLevel, 2);
-  //         })
-  //         .flatMap(rxClient_ => Rx.Observable.zip(rxClient_.commit(true), rxClient_.commit(), rxClient_ => rxClient_))
-  //         .catch(err => {
-  //             assert.instanceOf(err, RxClientError);
-  //             assert.equal(err.message, 'The transaction is not open on the client');
-  //
-  //             return Rx.Observable.return(rxClient);
-  //         })
-  //         .do(rxClient_ => {
-  //             assert.throws(::rxClient_.commit, RxClientError, 'The transaction is not open on the client');
-  //         })
-  //         .flatMap(rxClient_ => Rx.Observable.zip(rxClient_.begin(), rxClient_.commit(), rxClient_ => rxClient_))
-  //         .subscribe(
-  //             rxClient_ => {
-  //                 assert.strictEqual(rxClient_, rxClient);
-  //                 assert.strictEqual(rxClient_.client, client);
-  //                 assert.ok(rxClient.connected);
-  //                 assert.ok(client.connected);
-  //                 assert.isUndefined(rxClient._transactionSource);
-  //                 assert.strictEqual(rxClient.txLevel, 0);
-  //                 assert.lengthOf(client.queries, 7);
-  //                 assert.deepEqual(client.queries.map(q => q.queryText), [
-  //                     'begin',
-  //                     'savepoint point_1',
-  //                     'savepoint point_2',
-  //                     'release savepoint point_2',
-  //                     'commit',
-  //                     'begin',
-  //                     'commit'
-  //                 ]);
-  //             },
-  //             done,
-  //             done
-  //         );
-  // });
-  //
-  // test('Test rollback', function (done) {
-  //     const client = new ClientMock();
-  //     const rxClient = new RxClient(client);
-  //
-  //     assert.throws(::rxClient.rollback, RxClientError, 'The transaction is not open on the client');
-  //
-  //     Rx.Observable.zip(
-  //         rxClient.begin(),
-  //         rxClient.begin(),
-  //         rxClient.begin(),
-  //         rxClient_ => rxClient_
-  //     ).flatMap(rxClient_ => rxClient_.rollback())
-  //         .do(rxClient_ => {
-  //             assert.strictEqual(rxClient_, rxClient);
-  //             assert.strictEqual(rxClient_.client, client);
-  //             assert.strictEqual(rxClient_.txLevel, 2);
-  //         })
-  //         .flatMap(rxClient_ => rxClient_.begin())
-  //         .flatMap(rxClient_ => Rx.Observable.zip(rxClient_.rollback(true), rxClient_.rollback(), rxClient_ => rxClient_))
-  //         .catch(err => {
-  //             assert.instanceOf(err, RxClientError);
-  //             assert.equal(err.message, 'The transaction is not open on the client');
-  //
-  //             return Rx.Observable.return(rxClient);
-  //         })
-  //         .do(rxClient_ => {
-  //             assert.throws(::rxClient_.rollback, RxClientError, 'The transaction is not open on the client');
-  //         })
-  //         .flatMap(rxClient_ => Rx.Observable.zip(rxClient_.begin(), rxClient_.rollback(), rxClient_ => rxClient_))
-  //         .subscribe(
-  //             rxClient_ => {
-  //                 assert.strictEqual(rxClient_, rxClient);
-  //                 assert.strictEqual(rxClient_.client, client);
-  //                 assert.ok(rxClient.connected);
-  //                 assert.ok(client.connected);
-  //                 assert.isUndefined(rxClient._transactionSource);
-  //                 assert.equal(rxClient.txLevel, 0);
-  //                 assert.lengthOf(client.queries, 8);
-  //                 assert.deepEqual(client.queries.map(q => q.queryText), [
-  //                     'begin',
-  //                     'savepoint point_1',
-  //                     'savepoint point_2',
-  //                     'rollback to savepoint point_2',
-  //                     'savepoint point_2',
-  //                     'rollback',
-  //                     'begin',
-  //                     'rollback'
-  //                 ]);
-  //             },
-  //             done,
-  //             done
-  //         );
-  // });
-  //
-  // test('Test query/ begin / commit / rollback all together', function (done) {
-  //     const client = new ClientMock();
-  //     const rxClient = new RxClient(client);
-  //
-  //     rxClient.begin()
-  //         .flatMap(
-  //             rxClient_ => rxClient_.query('insert into t (q, w, e) values ($1, $2, $3)', [ 1, 2, 3 ]),
-  //             rxClient_ => rxClient_
-  //         )
-  //         .do(rxClient_ => {
-  //             assert.strictEqual(rxClient_.txLevel, 1);
-  //             assert.deepEqual(rxClient_.client.queries[ 1 ], {
-  //                 queryText: 'insert into t (q, w, e) values ($1, $2, $3)',
-  //                 values: [ 1, 2, 3 ]
-  //             });
-  //         })
-  //         .flatMap(rxClient_ => rxClient_.begin())
-  //         .flatMap(
-  //             rxClient_ => rxClient_.query('delete from t where id = 100500'),
-  //             rxClient_ => rxClient_
-  //         )
-  //         .flatMap(rxClient_ => rxClient_.commit())
-  //         .do(rxClient_ => {
-  //             assert.strictEqual(rxClient_.txLevel, 1);
-  //         })
-  //         .flatMap(rxClient_ => rxClient_.begin())
-  //         .flatMap(
-  //             rxClient_ => rxClient_.query('update t set id = id'),
-  //             rxClient_ => rxClient_
-  //         )
-  //         .flatMap(rxClient_ => rxClient_.rollback())
-  //         .do(rxClient_ => {
-  //             assert.strictEqual(rxClient_.txLevel, 1);
-  //         })
-  //         .flatMap(rxClient_ => rxClient_.rollback())
-  //         .do(rxClient_ => {
-  //             assert.throws(::rxClient_.commit, RxClientError, 'The transaction is not open on the client');
-  //             assert.throws(::rxClient_.rollback, RxClientError, 'The transaction is not open on the client');
-  //         })
-  //         .subscribe(
-  //             rxClient_ => {
-  //                 assert.strictEqual(rxClient_, rxClient);
-  //                 assert.strictEqual(rxClient_.client, client);
-  //                 assert.ok(rxClient.connected);
-  //                 assert.ok(client.connected);
-  //                 assert.isUndefined(rxClient._transactionSource);
-  //                 assert.strictEqual(rxClient.txLevel, 0);
-  //                 assert.lengthOf(client.queries, 9);
-  //                 assert.deepEqual(client.queries.map(q => q.queryText), [
-  //                     'begin',
-  //                     'insert into t (q, w, e) values ($1, $2, $3)',
-  //                     'savepoint point_1',
-  //                     'delete from t where id = 100500',
-  //                     'release savepoint point_1',
-  //                     'savepoint point_1',
-  //                     'update t set id = id',
-  //                     'rollback to savepoint point_1',
-  //                     'rollback'
-  //                 ]);
-  //             },
-  //             done,
-  //             done
-  //         );
-  // });
+  /** @test {RxClient#rollback} */
+  describe('Rollback transaction', function () {
+    it('Should throw error when called without opened transaction', function () {
+      expect(() => rxClient.rollback()).to.throws(RxClientError, 'The transaction is not opened on the client')
+      expect(rxClient.txLevel).to.be.equal(0)
+    })
+
+    it('Should execute "rollback" query to roll back transaction', function (done) {
+      sinon.spy(client, 'query')
+
+      rxClient.begin()
+        .do(() => done('Should not been called. Should ignores elements by default'))
+        .concat(rxClient.rollback())
+        .subscribe({
+          complete: () => {
+            expect(client.query).has.been.calledTwice
+            expect(client.queries.map(q => q.queryText)).to.be.deep.equal([
+              'begin',
+              'rollback'
+            ])
+            expect(rxClient.txLevel).to.be.equal(0)
+
+            client.query.restore()
+            client.end(done)
+          }
+        })
+    })
+
+    it('Should execute "rollback to savepoint" query when txLevel >= 1', function (done) {
+      sinon.spy(client, 'query')
+
+      rxClient.begin()
+        .concat(rxClient.query('select 1'))
+        .concat(rxClient.begin())
+        .concat(rxClient.query('select 2'))
+        .concat(rxClient.begin())
+        .concat(rxClient.query('select 3'))
+        .concat(rxClient.rollback())
+        .concat(rxClient.rollback())
+        .concat(rxClient.rollback())
+        .subscribe({
+          complete: () => {
+            expect(client.query).has.callCount(9)
+            expect(client.queries.map(q => q.queryText)).to.be.deep.equal([
+              'begin',
+              'select 1',
+              'savepoint point_1',
+              'select 2',
+              'savepoint point_2',
+              'select 3',
+              'rollback to savepoint point_2',
+              'rollback to savepoint point_1',
+              'rollback'
+            ])
+            expect(rxClient.txLevel).to.be.equal(0)
+
+            client.query.restore()
+            client.end(done)
+          }
+        })
+    })
+
+    it('Should map to provided argument', function (done) {
+      const obj = {}
+
+      rxClient.begin(obj)
+        .delay(10)
+        .mergeMap(x => rxClient.rollback(x))
+        .subscribe(
+          x => {
+            expect(x).to.be.equal(obj)
+            expect(rxClient.txLevel).to.be.equal(0)
+          },
+          done,
+          done
+        )
+    })
+
+    it('Should roll back transaction with all savepoints when called in force mode', function (done) {
+      sinon.spy(client, 'query')
+
+      rxClient.begin()
+        .concat(rxClient.query('select 1'))
+        .concat(rxClient.begin())
+        .concat(rxClient.query('select 2'))
+        .concat(rxClient.begin())
+        .concat(rxClient.query('select 3'))
+        .concat(rxClient.rollback())
+        .concat(rxClient.rollback(undefined, true))
+        .subscribe({
+          complete: () => {
+            expect(client.query).has.callCount(8)
+            expect(client.queries.map(q => q.queryText)).to.be.deep.equal([
+              'begin',
+              'select 1',
+              'savepoint point_1',
+              'select 2',
+              'savepoint point_2',
+              'select 3',
+              'rollback to savepoint point_2',
+              'rollback'
+            ])
+            expect(rxClient.txLevel).to.be.equal(0)
+
+            client.query.restore()
+            client.end(done)
+          }
+        })
+    })
+
+    it('Should save transaction level if error raised', function (done) {
+      rxClient.begin()
+        .concat(rxClient.query('select current_timestamp'))
+        .mergeMap(x => {
+          sinon.stub(client, 'query', function (queryText, values, cb) {
+            cb(new Error('Failed'))
+          })
+
+          return rxClient.rollback()
+        })
+        .mergeMap(x => {
+          done(new Error('Should not been called'))
+          return rxClient.query('Should not been called')
+        })
+        .catch(err => {
+          expect(err).is.instanceOf(Error)
+          expect(err.message).to.be.equal('Failed')
+          expect(rxClient.txLevel).to.be.equal(1)
+
+          client.query.restore()
+
+          return rxClient.rollback()
+        })
+        .subscribe(
+          () => {},
+          done,
+          () => {
+            expect(rxClient.txLevel).to.be.equal(0)
+
+            client.end(done)
+          }
+        )
+    })
+  })
 })
