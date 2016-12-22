@@ -83,7 +83,7 @@ function log(message) {
  * @return {Array}
  */
 function values(obj) {
-  if (obj == null && (typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) !== 'object') return [];
+  if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) !== 'object') return [];
   if (Array.isArray(obj)) return obj.slice();
 
   return Object.keys(obj).map(function (key) {

@@ -198,7 +198,7 @@ export default class RxClient {
           .refCount()
       }
     }
-    // todo ignore elements like in begin/commit/rollback ?
+
     return this._connectSource
   }
 
@@ -521,7 +521,7 @@ export default class RxClient {
 
     const commit = () => {
       if (this._txLevel === 0) {
-        throw new RxClientError('The transaction is not open on the client')
+        throw new RxClientError('The transaction is not opened on the client')
       }
 
       this._commitTxLevel()
@@ -538,7 +538,7 @@ export default class RxClient {
     }
 
     let source = commit()
-    if (mapTo) {
+    if (mapTo != null) {
       source = source.mapTo(mapTo)
     } else {
       source = source.ignoreElements()

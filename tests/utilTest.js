@@ -61,4 +61,24 @@ describe('Util functions tests', function () {
       config.DEBUG = oldDebugValue
     })
   })
+
+  /** @test {values} */
+  describe('Test values helper', function () {
+    it('Should return array of object values', function () {
+      expect(
+        util.values({
+          q: 1,
+          w: 'qwerty',
+          e: [ 1, 2, 3 ]
+        })
+      ).to.be.deep.equal([ 1, 'qwerty', [ 1, 2, 3 ] ])
+
+      expect(util.values([ 1, 2, 3 ])).to.be.deep.equal([ 1, 2, 3 ])
+    })
+    it('Should return empty array when called for non-object argument', function () {
+      expect(util.values(123)).to.be.deep.equal([])
+      expect(util.values('qwerty')).to.be.deep.equal([])
+      expect(util.values(true)).to.be.deep.equal([])
+    })
+  })
 })

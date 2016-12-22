@@ -199,7 +199,7 @@ var RxClient = function () {
           }).publishReplay().refCount();
         }
       }
-      // todo ignore elements like in begin/commit/rollback ?
+
       return this._connectSource;
     }
 
@@ -563,7 +563,7 @@ var RxClient = function () {
 
       var commit = function commit() {
         if (_this4._txLevel === 0) {
-          throw new _errors.RxClientError('The transaction is not open on the client');
+          throw new _errors.RxClientError('The transaction is not opened on the client');
         }
 
         _this4._commitTxLevel();
@@ -580,7 +580,7 @@ var RxClient = function () {
       };
 
       var source = commit();
-      if (mapTo) {
+      if (mapTo != null) {
         source = source.mapTo(mapTo);
       } else {
         source = source.ignoreElements();

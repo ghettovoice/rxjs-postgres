@@ -63,7 +63,7 @@ export function log (message, ...args) {
  * @return {Array}
  */
 export function values (obj) {
-  if (obj == null && typeof obj !== 'object') return []
+  if (typeof obj !== 'object') return []
   if (Array.isArray(obj)) return obj.slice()
 
   return Object.keys(obj).map(key => obj[ key ])
