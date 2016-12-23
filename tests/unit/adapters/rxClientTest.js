@@ -2,8 +2,8 @@ import chai, { expect } from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { Observable } from 'rxjs'
-import { ClientMock } from '../pgmock'
-import { RxClient, RxClientError } from '../../src'
+import { ClientMock } from '../../pgmock'
+import { RxClient, RxClientError } from '../../../src'
 
 chai.use(sinonChai)
 
@@ -426,20 +426,20 @@ describe('RxClient Adapter tests', function () {
 
     it('Should map result through projection function', function (done) {
       rxClient.query(
-        'select * from main where id = $1',
-        [ 1 ],
+        'select $1 :: int col1, $2 :: varchar col2',
+        [ 123, 'qwerty' ],
         result => result.rows.shift()
       ).do(row => {
-        expect(row).to.be.deep.equal({ id: 1, name: 'row1' })
+        expect(row).to.be.deep.equal({ col1: 123, col2: 'qwerty' })
       }).concatMap(() => rxClient.query(
-        'select * from child order by id',
+        'select * from generate_series(1, 3) as t(col)',
         result => result.rows
       )).subscribe(
         rows => {
           expect(rows).to.be.deep.equal([
-            { id: 1, field: 'field value', main_id: 1 },
-            { id: 2, field: 'field value 2', main_id: 1 },
-            { id: 3, field: 'super value', main_id: 2 }
+            { col: 1 },
+            { col: 2 },
+            { col: 3 }
           ])
         },
         done,
@@ -449,10 +449,10 @@ describe('RxClient Adapter tests', function () {
 
     /** @test {RxClient#queryRow} */
     it('Should return single row when use queryRow helper', function (done) {
-      rxClient.queryRow('select * from main where id = $1', [ 2 ])
+      rxClient.queryRow('select * from generate_series(1, 3) as t(col) order by 1 desc')
         .subscribe(
           row => {
-            expect(row).to.be.deep.equal({ id: 2, name: 'row2' })
+            expect(row).to.be.deep.equal({ col: 3 })
           },
           done,
           () => client.end(done)
@@ -461,13 +461,13 @@ describe('RxClient Adapter tests', function () {
 
     /** @test {RxClient#queryRows} */
     it('Should return array of rows when use queryRows helper', function (done) {
-      rxClient.queryRows('select * from child')
+      rxClient.queryRows('select * from generate_series(1, 3) as t(col) order by 1 desc')
         .subscribe(
           rows => {
             expect(rows).to.be.deep.equal([
-              { id: 1, field: 'field value', main_id: 1 },
-              { id: 2, field: 'field value 2', main_id: 1 },
-              { id: 3, field: 'super value', main_id: 2 }
+              { col: 3 },
+              { col: 2 },
+              { col: 1 }
             ])
           },
           done,
@@ -479,15 +479,15 @@ describe('RxClient Adapter tests', function () {
     it('Should emit each row as separate value when use queryRowsSeq helper', function (done) {
       const rows = []
 
-      rxClient.queryRowsSeq('select * from child')
+      rxClient.queryRowsSeq('select * from generate_series(1, 3) as t(col)')
         .subscribe(
           row => rows.push(row),
           done,
           () => {
             expect(rows).to.be.deep.equal([
-              { id: 1, field: 'field value', main_id: 1 },
-              { id: 2, field: 'field value 2', main_id: 1 },
-              { id: 3, field: 'super value', main_id: 2 }
+              { col: 1 },
+              { col: 2 },
+              { col: 3 }
             ])
 
             client.end(done)
@@ -498,8 +498,8 @@ describe('RxClient Adapter tests', function () {
     it('Should run queries sequentially in order of RxClient#query call', function (done) {
       rxClient.query('select current_timestamp')
         .merge(
-          rxClient.query('select * from main'),
-          rxClient.query('select * from child')
+          rxClient.query('select 1 col1'),
+          rxClient.query('select 2 col1')
         )
         .concat(rxClient.query('select $1 :: text', [ 'qwerty' ]))
         .subscribe(
@@ -508,8 +508,8 @@ describe('RxClient Adapter tests', function () {
           () => {
             expect(client.queries).to.be.deep.equal([
               { queryText: 'select current_timestamp', values: undefined },
-              { queryText: 'select * from main', values: undefined },
-              { queryText: 'select * from child', values: undefined },
+              { queryText: 'select 1 col1', values: undefined },
+              { queryText: 'select 2 col1', values: undefined },
               { queryText: 'select $1 :: text', values: [ 'qwerty' ] }
             ])
 
@@ -521,7 +521,7 @@ describe('RxClient Adapter tests', function () {
     it('Should replay result and share subscriptions', function (done) {
       sinon.spy(client, 'query')
 
-      let source = rxClient.queryRows('select * from pg_catalog.pg_tables')
+      let source = rxClient.queryRows('select * from generate_series(1, 3) as t(col)')
 
       source.subscribe(x => {
         expect(x).is.an('array')

@@ -2,8 +2,8 @@ import chai, { expect } from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import Rx from 'rxjs'
-import { PoolMock, ClientMock } from '../pgmock'
-import { RxPool, RxClient, RxPoolError } from '../../src'
+import { PoolMock, ClientMock } from '../../pgmock'
+import { RxPool, RxClient, RxPoolError } from '../../../src'
 
 chai.use(sinonChai)
 

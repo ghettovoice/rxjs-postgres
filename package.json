@@ -8,16 +8,15 @@
     "test": "tests"
   },
   "scripts": {
+    "lint": "eslint --ext .js ./src ./tests",
     "compile": "npm run lint && rm -rf dist && babel --source-maps -d dist src",
-    "test:db-deploy": "createdb -U postgres test && psql -U postgres -d test -f ./tests/test.sql > /dev/null",
-    "test:coveralls": "cat ./coverage/lcov.info | coveralls ",
-    "test:cover": "npm run lint && rm -rf ./coverage && istanbul cover _mocha -- --require babel-register --check-leaks './tests/**/*.js'",
-    "test:mocha": "npm run lint && mocha --require babel-register --check-leaks './tests/**/*.js'",
-    "test": "npm run test:cover",
+    "test:integration": "mocha --require babel-register --check-leaks './tests/integration/**/*.js'",
+    "test:unit": "rm -rf ./coverage && istanbul cover _mocha -- --require babel-register --check-leaks './tests/unit/**/*.js'",
+    "test": "npm run lint && npm run test:unit && npm run test:integration",
     "doc:gen": "rm -rf ./docs && esdoc -c ./esdoc.json",
-    "doc:deploy": "gh-pages -d ./docs -m 'Generate new docs'",
-    "doc": "npm run doc:gen && npm run doc:deploy",
-    "lint": "eslint --ext .js ./src ./tests"
+    "doc:deploy": "npm run doc:gen && gh-pages -d ./docs -m 'Generate new docs'",
+    "coveralls": "cat ./coverage/lcov.info | coveralls",
+    "travis:deploy": "npm test && npm run coveralls"
   },
   "repository": {
     "type": "git",

@@ -1,8 +1,8 @@
 import chai, { expect } from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
-import { config } from '../src'
-import * as util from '../src/util'
+import { config } from '../../src'
+import * as util from '../../src/util'
 
 chai.use(sinonChai)
 

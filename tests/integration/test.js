@@ -1,21 +1,21 @@
-import { Subscriber } from 'rxjs'
-import { ClientMock } from './tests/pgmock'
-import { RxClient, config } from './src'
-
-config.DEBUG = true
-
-const client = new ClientMock()
-const rxClient = new RxClient(client)
-
-class LogSubscriber extends Subscriber {
-  constructor (tag) {
-    super(
-      x => console.log('NEXT', tag, x),
-      err => console.error('ERROR', tag, err.message),
-      () => console.log('COMPLETE', tag)
-    )
-  }
-}
+// import { Subscriber } from 'rxjs'
+// import { ClientMock } from './tests/pgmock'
+// import { RxClient, config } from './src'
+//
+// config.DEBUG = true
+//
+// const client = new ClientMock()
+// const rxClient = new RxClient(client)
+//
+// class LogSubscriber extends Subscriber {
+//   constructor (tag) {
+//     super(
+//       x => console.log('NEXT', tag, x),
+//       err => console.error('ERROR', tag, err.message),
+//       () => console.log('COMPLETE', tag)
+//     )
+//   }
+// }
 
 // let insertsSource = Observable.of(
 //     [ 123, 'name1' ],

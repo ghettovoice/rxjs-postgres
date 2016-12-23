@@ -21,26 +21,15 @@
 npm install --save rxjs-postgres
 ```
 
-## Package commands
+## Testing
 
 ```bash
-# deploy test db before running test
-npm run test:db-deploy
-# run tests
+# Run all
 npm test
-# run test with coverage
-npm run test:cover
 
-# compile sources
-npm run compile
+# Run unit tests
+npm run test:unit
 
-# generate documentation
-npm run doc:gen
-# deploy documentation to GitHub Pages
-npm run doc:deploy
-# all in one command
-npm run doc
-
-# lint sources
-npm run lint
+# Run integration tests
+npm run test:integration
 ```
