@@ -1,5 +1,5 @@
 import pg from 'pg'
-import Rx from 'rxjs'
+import { Observable } from 'rxjs'
 import RxClient from './RxClient'
 import { RxPoolError } from '../errors'
 import * as util from '../util'
@@ -42,7 +42,7 @@ export default class RxPool {
    *    of the connected {@link RxClient}
    */
   connect () {
-    return Rx.Observable.fromPromise(this._pool.connect())
+    return Observable.fromPromise(this._pool.connect())
       .flatMap(client => {
         const rxClient = new RxClient(client)
 
@@ -72,7 +72,7 @@ export default class RxPool {
    * @return {Observable<RxPool>}
    */
   end () {
-    return Rx.Observable.fromPromise(this._pool.end())
+    return Observable.fromPromise(this._pool.end())
       .map(() => this)
       .do(() => util.log('RxPool: pool ended'))
   }
@@ -80,15 +80,15 @@ export default class RxPool {
   /**
    * @param {string} queryText
    * @param {Array} [values]
-   * @return {Rx.Observable<Object>}
+   * @return {Observable<Object>}
    */
   query (queryText, values) {
-    return Rx.Observable.fromPromise(this._pool.query(queryText, values))
+    return Observable.fromPromise(this._pool.query(queryText, values))
       .do(() => util.log('RxPool: query executed'))
   }
 
   // /**
-  //  * @return {Rx.Observable<RxPool>}
+  //  * @return {Observable<RxPool>}
   //  */
   // begin() {
   //     this._tclientSource = (this._tclientSource || this.connect())
@@ -100,7 +100,7 @@ export default class RxPool {
   //
   // /**
   //  * @param {boolean} [force] Commit transaction with all savepoints.
-  //  * @return {Rx.Observable<RxPool>}
+  //  * @return {Observable<RxPool>}
   //  * @throws {RxPoolError}
   //  */
   // commit(force) {
@@ -121,7 +121,7 @@ export default class RxPool {
   //
   // /**
   //  * @param {boolean} [force] Rollback transaction with all savepoints.
-  //  * @return {Rx.Observable<RxPool>}
+  //  * @return {Observable<RxPool>}
   //  * @throws {RxPoolError}
   //  */
   // rollback(force) {

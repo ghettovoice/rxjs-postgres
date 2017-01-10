@@ -12,8 +12,6 @@ var _pg2 = _interopRequireDefault(_pg);
 
 var _rxjs = require('rxjs');
 
-var _rxjs2 = _interopRequireDefault(_rxjs);
-
 var _RxClient = require('./RxClient');
 
 var _RxClient2 = _interopRequireDefault(_RxClient);
@@ -72,7 +70,7 @@ var RxPool = function () {
      *    of the connected {@link RxClient}
      */
     value: function connect() {
-      return _rxjs2.default.Observable.fromPromise(this._pool.connect()).flatMap(function (client) {
+      return _rxjs.Observable.fromPromise(this._pool.connect()).flatMap(function (client) {
         var rxClient = new _RxClient2.default(client);
 
         rxClient.release = function (err) {
@@ -110,7 +108,7 @@ var RxPool = function () {
     value: function end() {
       var _this = this;
 
-      return _rxjs2.default.Observable.fromPromise(this._pool.end()).map(function () {
+      return _rxjs.Observable.fromPromise(this._pool.end()).map(function () {
         return _this;
       }).do(function () {
         return util.log('RxPool: pool ended');
@@ -120,19 +118,19 @@ var RxPool = function () {
     /**
      * @param {string} queryText
      * @param {Array} [values]
-     * @return {Rx.Observable<Object>}
+     * @return {Observable<Object>}
      */
 
   }, {
     key: 'query',
     value: function query(queryText, values) {
-      return _rxjs2.default.Observable.fromPromise(this._pool.query(queryText, values)).do(function () {
+      return _rxjs.Observable.fromPromise(this._pool.query(queryText, values)).do(function () {
         return util.log('RxPool: query executed');
       });
     }
 
     // /**
-    //  * @return {Rx.Observable<RxPool>}
+    //  * @return {Observable<RxPool>}
     //  */
     // begin() {
     //     this._tclientSource = (this._tclientSource || this.connect())
@@ -144,7 +142,7 @@ var RxPool = function () {
     //
     // /**
     //  * @param {boolean} [force] Commit transaction with all savepoints.
-    //  * @return {Rx.Observable<RxPool>}
+    //  * @return {Observable<RxPool>}
     //  * @throws {RxPoolError}
     //  */
     // commit(force) {
@@ -165,7 +163,7 @@ var RxPool = function () {
     //
     // /**
     //  * @param {boolean} [force] Rollback transaction with all savepoints.
-    //  * @return {Rx.Observable<RxPool>}
+    //  * @return {Observable<RxPool>}
     //  * @throws {RxPoolError}
     //  */
     // rollback(force) {
