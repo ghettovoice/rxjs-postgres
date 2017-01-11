@@ -40,22 +40,34 @@ export function datetime (ts) {
  * Logs to STDOUT with simple formatting.
  *
  * @param {string} message
- * @param {...*} [args]
+ * @param {Array} [args]
+ * @param {string} [msgCol=blue]
+ * @param {string} [argsCol=white]
  *
  * @private
  */
-export function log (message, ...args) {
+export function log (message, args = [], msgCol = 'blue', argsCol = 'white') {
   if (config.DEBUG) {
     const trace = stackTrace.get()
     let callerFile = trace[ 1 ].getFileName().replace(path.dirname(__dirname) + '/', '')
     let callerFileLine = trace[ 1 ].getLineNumber()
 
     console.log(
-      chalk.cyan('[ ' + Date.now()/* datetime() */ + ' ' + chalk.grey(callerFile + ':' + callerFileLine) + ' ]'),
-      chalk.blue(message),
-      ...args
+      chalk.cyan('[ ' + Date.now() + ' ' + chalk.grey(callerFile + ':' + callerFileLine) + ' ]'),
+      chalk[ msgCol ](message),
+      chalk[ argsCol ](...args)
     )
   }
+}
+
+/**
+ * @param message
+ * @param args
+ *
+ * @private
+ */
+export function err (message, args = []) {
+  log(message, args, 'red')
 }
 
 /**

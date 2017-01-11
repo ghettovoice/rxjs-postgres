@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import chai, { expect } from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
@@ -50,13 +51,13 @@ describe('Util functions tests', function () {
     it('Test with config.DEBUG = true', function () {
       config.DEBUG = true
 
-      util.log('test message', 1, 2, 'arg')
+      util.log('test message', [ 1, 2, 'arg' ])
 
       expect(console.log).has.been.calledOnce
 
       const call = console.log.getCall(0)
       expect(call.args[ 1 ].match(/test message/)).is.ok
-      expect(call.args.slice(2)).to.deep.equal([ 1, 2, 'arg' ])
+      expect(call.args[ 2 ]).to.be.equal(chalk.white(1, 2, 'arg'))
 
       config.DEBUG = oldDebugValue
     })

@@ -229,20 +229,24 @@ describe('RxPool Adapter tests', function () {
 
   /** @test RxPool#query */
   describe('Query execution', function () {
-    it('Should emit query result', function (done) {
+    it('Should return query result object', function (done) {
       sinon.spy(ClientMock.prototype, 'query')
 
-      rxPool.query('select $1 :: int col', [ 123 ])
+      rxPool.query('select $1 :: int col1, $2 :: text col2', [ 123, 'qwerty' ])
         .subscribe(
           result => {
             expect(result).is.an('object')
+            expect(result.rows).is.an('array')
             expect(result.rows).to.be.deep.equal([
-              { col: 123 }
+              { col1: 123, col2: 'qwerty' }
             ])
           },
           done,
           () => {
-            expect(ClientMock.prototype.query).has.been.calledWith('select $1 :: int col', [ 123 ])
+            expect(ClientMock.prototype.query).has.been.calledWith(
+              'select $1 :: int col1, $2 :: text col2',
+              [ 123, 'qwerty' ]
+            )
             expect(pool.pool.getPoolSize()).to.be.equal(1)
 
             ClientMock.prototype.query.restore()

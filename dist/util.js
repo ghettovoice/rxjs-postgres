@@ -8,6 +8,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 exports.datetime = datetime;
 exports.log = log;
+exports.err = err;
 exports.values = values;
 
 var _path = require('path');
@@ -25,6 +26,8 @@ var _stackTrace = require('stack-trace');
 var _stackTrace2 = _interopRequireDefault(_stackTrace);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 /**
  * Library utils.
@@ -58,24 +61,36 @@ function datetime(ts) {
  * Logs to STDOUT with simple formatting.
  *
  * @param {string} message
- * @param {...*} [args]
+ * @param {Array} [args]
+ * @param {string} [msgCol=blue]
+ * @param {string} [argsCol=white]
  *
  * @private
  */
 function log(message) {
-  if (_.config.DEBUG) {
-    var _console;
+  var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+  var msgCol = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'blue';
+  var argsCol = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 'white';
 
+  if (_.config.DEBUG) {
     var trace = _stackTrace2.default.get();
     var callerFile = trace[1].getFileName().replace(_path2.default.dirname(__dirname) + '/', '');
     var callerFileLine = trace[1].getLineNumber();
 
-    for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-      args[_key - 1] = arguments[_key];
-    }
-
-    (_console = console).log.apply(_console, [_chalk2.default.cyan('[ ' + Date.now() /* datetime() */ + ' ' + _chalk2.default.grey(callerFile + ':' + callerFileLine) + ' ]'), _chalk2.default.blue(message)].concat(args));
+    console.log(_chalk2.default.cyan('[ ' + Date.now() + ' ' + _chalk2.default.grey(callerFile + ':' + callerFileLine) + ' ]'), _chalk2.default[msgCol](message), _chalk2.default[argsCol].apply(_chalk2.default, _toConsumableArray(args)));
   }
+}
+
+/**
+ * @param message
+ * @param args
+ *
+ * @private
+ */
+function err(message) {
+  var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+
+  log(message, args, 'red');
 }
 
 /**

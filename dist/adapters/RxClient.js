@@ -342,9 +342,10 @@ var RxClient = function () {
 
         return query(queryText, values);
       }).do(function () {
+        util.log('RxClient: query executed', [queryText, _this2._txLevel]);
         _this2._commitTxLevel();
-        util.log('RxClient: query executed', queryText, _this2._txLevel);
       }, function () {
+        util.err('RxClient: query executed', [queryText, _this2._txLevel]);
         _this2._rollbackTxLevel();
         _this2._querySource = undefined;
       }).publishReplay().refCount();

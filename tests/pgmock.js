@@ -1,4 +1,3 @@
-import chalk from 'chalk'
 import pg from 'pg'
 import * as util from '../src/util'
 /**
@@ -23,7 +22,7 @@ export class ClientMock extends pg.Client {
   connect (callback) {
     super.connect((err) => {
       if (err) {
-        util.log('ClientMock: connection terminated', chalk.red(err.message))
+        util.err('ClientMock: connection terminated. Error: ' + err.message)
         typeof callback === 'function' && callback(err)
       } else {
         util.log('ClientMock: connected')
@@ -35,7 +34,7 @@ export class ClientMock extends pg.Client {
   end (callback) {
     super.end(err => {
       if (err) {
-        util.log('ClientMock: ending failed', chalk.red(err.message))
+        util.err('ClientMock: ending failed. Error: ' + err.message)
         typeof callback === 'function' && callback(err)
       } else {
         util.log('ClientMock: ended')
@@ -47,7 +46,7 @@ export class ClientMock extends pg.Client {
   query (queryText, values, callback) {
     return super.query(queryText, values, (err, res) => {
       if (err) {
-        util.log('ClientMock: query failed', queryText, chalk.red(err.message))
+        util.err('ClientMock: query failed. Error: ' + err.message, [ queryText ])
         typeof callback === 'function' && callback(err)
       } else {
         this.queries.push({ queryText, values })
@@ -76,12 +75,12 @@ export class PoolMock extends pg.Pool {
     return super.query(queryText, values, cb)
       .then(res => {
         this.queries.push({ queryText, values })
-        util.log('PoolMock: query executed', queryText)
+        util.log('PoolMock: query executed', [ queryText ])
 
         return res
       })
       .catch(err => {
-        util.log('PoolMock: query failed', chalk.red(err.message))
+        util.err('PoolMock: query failed. Error: ' + err.message)
 
         throw err
       })
