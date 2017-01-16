@@ -8,25 +8,6 @@ import * as util from '../../src/util'
 chai.use(sinonChai)
 
 describe('Util functions tests', function () {
-  /** @test {datetime} */
-  it('Test util.datetime', function () {
-    let ts = new Date(2016, 0, 1, 0, 0, 0, 0).getTime()
-    let dt = util.datetime(ts)
-
-    expect(dt).to.equal('01.01.2016 00:00:00.0')
-
-    let date = new Date()
-    dt = util.datetime()
-
-    expect(dt).to.equal(('0' + date.getDate()).slice(-2) + '.' +
-                        ('0' + (date.getMonth() + 1)).slice(-2) + '.' +
-                        date.getFullYear() + ' ' +
-                        ('0' + date.getHours()).slice(-2) + ':' +
-                        ('0' + date.getMinutes()).slice(-2) + ':' +
-                        ('0' + date.getSeconds()).slice(-2) + '.' +
-                        date.getMilliseconds())
-  })
-
   /** @test {log} */
   describe('Test util.log', function () {
     const oldDebugValue = config.DEBUG

@@ -12,31 +12,6 @@ import stackTrace from 'stack-trace'
  */
 
 /**
- * Formats timestamp as Date/Time string in form of DD.MM.YYYY HH:mm:ss.
- *
- * @param {number} [ts] UTC timestamp.
- *
- * @returns {string} Return UTC Date/Time string.
- *
- * @private
- */
-export function datetime (ts) {
-  if (ts == null) {
-    ts = Date.now()
-  }
-
-  const date = new Date(ts)
-
-  return ('0' + date.getDate()).slice(-2) + '.' +
-         ('0' + (date.getMonth() + 1)).slice(-2) + '.' +
-         date.getFullYear() + ' ' +
-         ('0' + date.getHours()).slice(-2) + ':' +
-         ('0' + date.getMinutes()).slice(-2) + ':' +
-         ('0' + date.getSeconds()).slice(-2) + '.' +
-         date.getMilliseconds()
-}
-
-/**
  * Logs to STDOUT with simple formatting.
  *
  * @param {string} message
