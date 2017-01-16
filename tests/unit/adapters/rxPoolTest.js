@@ -248,6 +248,7 @@ describe('RxPool Adapter tests', function () {
               [ 123, 'qwerty' ]
             )
             expect(pool.pool.getPoolSize()).to.be.equal(1)
+            expect(pool.pool.inUseObjectsCount()).to.be.equal(0)
 
             ClientMock.prototype.query.restore()
             pool.end(done)
@@ -258,26 +259,106 @@ describe('RxPool Adapter tests', function () {
     it('Should raise error on failed queries', function (done) {
       sinon.spy(ClientMock.prototype, 'query')
 
-      Observable.of(
-        [ 'select $1 :: int col', [ 123 ] ],
-        [ 'select * from not_exists_table' ]
-      ).flatMap(arr => rxPool.query(arr[ 0 ], arr[ 1 ]))
+      rxPool.query('select * from not_exists_table')
         .subscribe(
-          result => {
-            expect(result).is.an('object')
-            expect(result.rows).to.be.deep.equal([
-              { col: 123 }
-            ])
-          },
+          () => done(new Error('Should not be called')),
           err => {
             expect(err).is.instanceOf(Error)
             expect(err.message).to.be.equal('relation "not_exists_table" does not exist')
-            expect(ClientMock.prototype.query).has.been.calledTwice
+            expect(ClientMock.prototype.query).has.been.calledOnce
 
             ClientMock.prototype.query.restore()
             pool.end(done)
           },
           () => done(new Error('Should not be called'))
+        )
+    })
+
+    it('Should map result through projection function', function (done) {
+      rxPool.query(
+        'select $1 :: int col1, $2 :: varchar col2',
+        [ 123, 'qwerty' ],
+        result => result.rows.shift()
+      ).do(row => {
+        expect(row).to.be.deep.equal({ col1: 123, col2: 'qwerty' })
+      }).concatMap(() => rxPool.query(
+        'select * from generate_series(1, 3) as t(col)',
+        result => result.rows
+      )).subscribe(
+        rows => {
+          expect(rows).to.be.deep.equal([
+            { col: 1 },
+            { col: 2 },
+            { col: 3 }
+          ])
+        },
+        done,
+        () => {
+          expect(pool.pool.getPoolSize()).to.be.equal(2)
+          expect(pool.pool.inUseObjectsCount()).to.be.equal(0)
+
+          pool.end(done)
+        }
+      )
+    })
+
+    /** @test {RxPool#queryRow} */
+    it('Should return single row when use queryRow helper', function (done) {
+      rxPool.queryRow('select * from generate_series(1, 3) as t(col) order by 1 desc')
+        .subscribe(
+          row => {
+            expect(row).to.be.deep.equal({ col: 3 })
+          },
+          done,
+          () => {
+            expect(pool.pool.getPoolSize()).to.be.equal(1)
+            expect(pool.pool.inUseObjectsCount()).to.be.equal(0)
+
+            pool.end(done)
+          }
+        )
+    })
+
+    /** @test {RxPool#queryRows} */
+    it('Should return array of rows when use queryRows helper', function (done) {
+      rxPool.queryRows('select * from generate_series(1, 3) as t(col) order by 1 desc')
+        .subscribe(
+          rows => {
+            expect(rows).to.be.deep.equal([
+              { col: 3 },
+              { col: 2 },
+              { col: 1 }
+            ])
+          },
+          done,
+          () => {
+            expect(pool.pool.getPoolSize()).to.be.equal(1)
+            expect(pool.pool.inUseObjectsCount()).to.be.equal(0)
+
+            pool.end(done)
+          }
+        )
+    })
+
+    /** @test {RxPool#queryRowsSeq} */
+    it('Should emit each row as separate value when use queryRowsSeq helper', function (done) {
+      const rows = []
+
+      rxPool.queryRowsSeq('select * from generate_series(1, 3) as t(col)')
+        .subscribe(
+          row => rows.push(row),
+          done,
+          () => {
+            expect(rows).to.be.deep.equal([
+              { col: 1 },
+              { col: 2 },
+              { col: 3 }
+            ])
+            expect(pool.pool.getPoolSize()).to.be.equal(1)
+            expect(pool.pool.inUseObjectsCount()).to.be.equal(0)
+
+            pool.end(done)
+          }
         )
     })
   })

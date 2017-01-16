@@ -78,13 +78,80 @@ export default class RxPool {
   }
 
   /**
-   * @param {string} queryText
-   * @param {Array} [values]
-   * @return {Observable<Object>}
+   * Executes SQL query with arguments and returns {@link Observable} sequence of the query {@link Result} object.
+   * You can pass result projection function as second or third argument to map {@link Result} object to
+   * another value that will be emitted by the result {@link Observable}.
+   *
+   * @see {@link RxPool#queryRow}
+   * @see {@link RxPool#queryRows}
+   * @see {@link RxPool#queryRowsSeq}
+   * @see {@link RxClient#query}
+   *
+   * @param {string} queryText SQL string.
+   * @param {Array|function(x: Result): *} [values] Array of query arguments or projection function.
+   * @param {function(x: Result): *} [projectFunction] A function which takes the query {@link Result}
+   *      and maps it ta the another value or inner {@link Observable}.
+   *
+   * @return {Observable} Returns {@link Observable} sequence of query {@link Result} or
+   *      whatever returned by the `projectFunction`.
    */
-  query (queryText, values) {
-    return Observable.fromPromise(this._pool.query(queryText, values))
-      .do(() => util.log('RxPool: query executed'))
+  query (queryText, values, projectFunction) {
+    return this.connect()
+      .mergeMap(
+        client => client.query(queryText, values, projectFunction)
+          .do(undefined, ::client.release, ::client.release)
+      )
+  }
+
+  /**
+   * Executes query and maps the query {@link Result} object to the first returned row.
+   *
+   * @see {@link RxPool#query}
+   * @see {@link RxPool#queryRows}
+   * @see {@link RxPool#queryRowsSeq}
+   * @see {@link RxClient#query}
+   *
+   * @param {string} queryText SQL string.
+   * @param {Array} [values] Array of query arguments.
+   *
+   * @return {Observable<Object>} Single element {@link Observable} sequence of the first returned row.
+   */
+  queryRow (queryText, values) {
+    return this.query(queryText, values, result => result.rows.slice().shift())
+  }
+
+  /**
+   * Executes query and maps query {@link Result} object to the array of rows.
+   *
+   * @see {@link RxPool#query}
+   * @see {@link RxPool#queryRow}
+   * @see {@link RxPool#queryRowsSeq}
+   * @see {@link RxClient#query}
+   *
+   * @param {string} queryText SQL string.
+   * @param {Array} [values] Array of query arguments.
+   *
+   * @return {Observable<Array<Object>>} {@link Observable} sequence of array of rows.
+   */
+  queryRows (queryText, values) {
+    return this.query(queryText, values, result => result.rows.slice())
+  }
+
+  /**
+   * Executes query and maps query {@link Result} object to {@link Observable} sequence of returned rows.
+   *
+   * @see {@link RxPool#query}
+   * @see {@link RxPool#queryRow}
+   * @see {@link RxPool#queryRows}
+   * @see {@link RxClient#query}
+   *
+   * @param {string} queryText SQL string.
+   * @param {Array} [values] Array of query arguments.
+   *
+   * @return {Observable<Object>} {@link Observable} sequence of rows returned by the query.
+   */
+  queryRowsSeq (queryText, values) {
+    return this.query(queryText, values, result => Observable.from(result.rows.slice()))
   }
 
   // /**
