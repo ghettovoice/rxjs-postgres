@@ -227,7 +227,7 @@ describe('RxPool Adapter tests', function () {
     })
   })
 
-  /** @test RxPool#query */
+  /** @test {RxPool#query} */
   describe('Query execution', function () {
     it('Should return query result object', function (done) {
       sinon.spy(ClientMock.prototype, 'query')
