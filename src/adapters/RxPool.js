@@ -5,11 +5,17 @@ import { RxPoolError } from '../errors'
 import * as util from '../util'
 
 /**
- * Standalone RxJs adapter for `pg.Pool`.
+ * Standalone adapter for {@link Pool} class with Reactive API.
+ *
+ * @see {@link RxClient}
+ * @see {@link Client}
  */
 export default class RxPool {
   /**
-   * @param {Pool} pool
+   * @param {Pool} pool Instance of {@link Pool}.
+   *
+   * @throws {RxClientError} Throws when called with invalid arguments.
+   * @throws {TypeError} Throws when called as function.
    */
   constructor (pool) {
     if (!(pool instanceof pg.Pool)) {
@@ -21,13 +27,34 @@ export default class RxPool {
      * @private
      */
     this._pool = pool
+    /**
+     * @type {Observable<RxClient>}
+     * @private
+     */
+    this._txClientSource = undefined
+    /**
+     * @type {Observable}
+     * @private
+     */
+    this._errorSource = Observable.fromEvent(this._pool, 'error')
   }
 
   /**
-   * @return {Pool}
+   * @type {Pool} Instance of {@link Pool}.
    */
   get pool () {
     return this._pool
+  }
+
+  /**
+   * Errors hot observable. Use it to subscribe to the client error events.
+   *
+   * @see {@link Client}
+   *
+   * @type {Observable<Error>}
+   */
+  get errors () {
+    return this._errorSource
   }
 
   /**
@@ -38,7 +65,7 @@ export default class RxPool {
    * @see {@link RxPool#end}
    * @see {@link RxClient}
    *
-   * @param {boolean} [autoRelease=true]
+   * @param {boolean} [autoRelease=true] Release client after complete.
    * @return {Observable<RxClient>} Returns single element {@link Observable} sequence
    *    of the connected {@link RxClient}
    */
@@ -74,11 +101,14 @@ export default class RxPool {
   }
 
   /**
-   * @return {Observable<RxPool>}
+   * @return {Observable<boolean>}
    */
   end () {
     return Observable.fromPromise(this._pool.end())
-      .map(() => this)
+      .mapTo(true)
+      .finally(() => {
+        this._txClientSource = undefined
+      })
       .do(() => util.log('RxPool: pool ended'))
   }
 
@@ -86,6 +116,14 @@ export default class RxPool {
    * Executes SQL query with arguments and returns {@link Observable} sequence of the query {@link Result} object.
    * You can pass result projection function as second or third argument to map {@link Result} object to
    * another value that will be emitted by the result {@link Observable}.
+   *
+   * @example <caption>Simple query with arguments</caption>
+   * rxPool.query('select * from main where id = $1', [ 1 ] )
+   *   .subscribe(
+   *     result => console.log('NEXT', result),
+   *     err => console.error('ERROR', err.message),
+   *     () => console.log('COMPLETE')
+   *   )
    *
    * @see {@link RxPool#queryRow}
    * @see {@link RxPool#queryRows}
@@ -101,11 +139,8 @@ export default class RxPool {
    *      whatever returned by the `projectFunction`.
    */
   query (queryText, values, projectFunction) {
-    return this.connect()
-      .mergeMap(
-        client => client.query(queryText, values, projectFunction)
-          // .do(undefined, ::client.release, ::client.release)
-      )
+    return (this._txClientSource || this.connect())
+      .mergeMap(client => client.query(queryText, values, projectFunction))
   }
 
   /**
@@ -159,56 +194,78 @@ export default class RxPool {
     return this.query(queryText, values, result => Observable.from(result.rows.slice()))
   }
 
-  // /**
-  //  * @return {Observable<RxPool>}
-  //  */
-  // begin() {
-  //     this._tclientSource = (this._tclientSource || this.connect())
-  //         .flatMap(rxClient => rxClient.begin())
-  //         .shareReplay(1);
-  //
-  //     return this._tclientSource.map(() => this);
-  // }
-  //
+  /**
+   * Opens new transaction on the top level when {@link RxClient#txLevel} equals to 0,
+   * or creates savepoints for nested transactions when {@link RxClient#txLevel} more than 1 (i.e partial rollback).
+   * See PostgreSQL documentation for known limitations of savepoints.
+   *
+   * @see {@link RxClient#txLevel}
+   * @see {@link RxClient#commit}
+   * @see {@link RxClient#rollback}
+   * @see https://www.postgresql.org/docs/current/static/tutorial-transactions.html
+   *
+   * @param {*} [mapTo] If defined will be emitted by the returned {@link Observable}
+   *
+   * @return {Observable} Returns empty {@link Observable} sequence that completes
+   *      when transaction successfully opened or {@link Observable} sequence of
+   *      whatever passed as `mapTo` argument.
+   *
+   * @experimental
+   */
+  begin (mapTo) {
+    this._txClientSource = (this._txClientSource || this.connect())
+      .mergeMap(rxClient => rxClient.begin(mapTo))
+      .publishReplay()
+      .refCount()
+
+    return this._txClientSource
+  }
+
   // /**
   //  * @param {boolean} [force] Commit transaction with all savepoints.
   //  * @return {Observable<RxPool>}
+  //  *
   //  * @throws {RxPoolError}
+  //  *
+  //  * @experimental
   //  */
-  // commit(force) {
-  //     if (!this._tclientSource) {
-  //         throw new RxPoolError('Client with open transaction does not exists');
-  //     }
+  // commit (force) {
+  //   if (!this._tclientSource) {
+  //     throw new RxPoolError('Client with open transaction does not exists')
+  //   }
   //
-  //     this._tclientSource = this._tclientSource.flatMap(rxClient => rxClient.commit(force))
-  //         .do(rxClient => {
-  //             if (rxClient.txLevel === 0) {
-  //                 this._tclientSource = undefined;
-  //             }
-  //         })
-  //         .shareReplay(1);
+  //   this._tclientSource = this._tclientSource.flatMap(rxClient => rxClient.commit(force))
+  //     .do(rxClient => {
+  //       if (rxClient.txLevel === 0) {
+  //         this._tclientSource = undefined
+  //       }
+  //     })
+  //     .shareReplay(1)
   //
-  //     return this._tclientSource.map(() => this);
+  //   return this._tclientSource.map(() => this)
   // }
   //
   // /**
   //  * @param {boolean} [force] Rollback transaction with all savepoints.
   //  * @return {Observable<RxPool>}
+  //  *
   //  * @throws {RxPoolError}
+  //  *
+  //  * @experimental
   //  */
-  // rollback(force) {
-  //     if (!this._tclientSource) {
-  //         throw new RxPoolError('Client with open transaction does not exists');
-  //     }
+  // rollback (force) {
+  //   if (!this._tclientSource) {
+  //     throw new RxPoolError('Client with open transaction does not exists')
+  //   }
   //
-  //     this._tclientSource = this._tclientSource.flatMap(rxClient => rxClient.rollback(force))
-  //         .do(rxClient => {
-  //             if (rxClient.txLevel === 0) {
-  //                 this._tclientSource = undefined;
-  //             }
-  //         })
-  //         .shareReplay(1);
+  //   this._tclientSource = this._tclientSource.flatMap(rxClient => rxClient.rollback(force))
+  //     .do(rxClient => {
+  //       if (rxClient.txLevel === 0) {
+  //         this._tclientSource = undefined
+  //       }
+  //     })
+  //     .shareReplay(1)
   //
-  //     return this._tclientSource.map(() => this);
+  //   return this._tclientSource.map(() => this)
   // }
 }

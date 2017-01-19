@@ -4,9 +4,8 @@ import { Observable } from 'rxjs'
 import { RxClientError } from '../errors'
 import * as util from '../util'
 
-// todo Try all examples! and add tests to cover use cases from examples.
 /**
- * Standalone adapter for `node-postgres` {@link Client} class with Reactive API.
+ * Standalone adapter for {@link Client} class with Reactive API.
  *
  * @example <caption>Basic usage</caption>
  * import { Client } from 'pg'
@@ -62,7 +61,7 @@ export default class RxClient {
    * @see {@link RxClient#end}
    * @see {@link RxClient#query}
    *
-   * @param {Client} client Instance of `node-postgres` Client type.
+   * @param {Client} client Instance of {@link Client}.
    *
    * @throws {RxClientError} Throws when called with invalid arguments.
    * @throws {TypeError} Throws when called as function.
@@ -86,7 +85,7 @@ export default class RxClient {
      * @type {Observable}
      * @private
      */
-    this._errorSource = undefined
+    this._errorSource = Observable.fromEvent(this._client, 'error')
     /**
      * @type {Observable}
      * @private
@@ -105,7 +104,7 @@ export default class RxClient {
   }
 
   /**
-   * Instance of `node-postgres` {@link Client} type.
+   * Instance of {@link Client}.
    *
    * @type {Client}
    */
@@ -154,7 +153,6 @@ export default class RxClient {
     this._connectSource = undefined
     this._endSource = undefined
     this._querySource = undefined
-    this._errorSource = undefined
   }
 
   /**
@@ -178,16 +176,11 @@ export default class RxClient {
   connect () {
     if (!this._connectSource) {
       this._connectSource = Observable.of(true)
-      // wrap errors with Observable to mixin it in external code
-      this._errorSource = Observable.fromEvent(this._client, 'error')
-
       // subscribe to the end to make RxClient cleanup
       Observable.fromEvent(this._client, 'end')
         .take(1)
-        .subscribe({
-          error: ::this._cleanup,
-          complete: ::this._cleanup
-        })
+        .finally(::this._cleanup)
+        .subscribe()
 
       if (!this.connected) {
         const connect = Observable.bindNodeCallback(::this._client.connect, () => true)

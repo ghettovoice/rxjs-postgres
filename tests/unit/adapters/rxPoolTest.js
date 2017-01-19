@@ -48,8 +48,6 @@ describe('RxPool Adapter tests', function () {
             expect(rxClient.client).is.instanceOf(ClientMock)
             expect(rxClient.connected).is.true
             expect(rxClient.release).is.an('function')
-
-            // rxClient.release()
           },
           done,
           () => {
@@ -73,8 +71,6 @@ describe('RxPool Adapter tests', function () {
             expect(rxClient.client).is.instanceOf(ClientMock)
             expect(rxClient.connected).is.true
             expect(rxClient.client.release).is.an('function')
-
-            // rxClient.release()
           },
           done,
           () => {
@@ -94,9 +90,6 @@ describe('RxPool Adapter tests', function () {
         .subscribe(
           ([ rxClient1, rxClient2 ]) => {
             expect(rxClient1).to.not.equal(rxClient2)
-
-            // rxClient1.release()
-            // rxClient2.release()
           },
           done,
           () => {
@@ -146,7 +139,6 @@ describe('RxPool Adapter tests', function () {
               .do(
                 () => done(new Error('Should not be called')),
                 err => {
-                  // rxClient.release(err)
                   expect(rxClient.client.release).has.been.calledOnce
                   expect(rxClient.client.release).has.been.calledWith(err)
                 }
@@ -174,15 +166,12 @@ describe('RxPool Adapter tests', function () {
       sinon.spy(pool, 'end')
 
       Observable.merge(rxPool.take(), rxPool.take())
-        .flatMap(
-          rxClient => rxClient.query('select now()')
-            // .do(() => rxClient.release(), ::rxClient.release)
-        )
+        .mergeMap(rxClient => rxClient.query('select now()'))
         .last()
-        .flatMap(() => rxPool.end())
+        .mergeMapTo(rxPool.end())
         .subscribe(
-          rxPool_ => {
-            expect(rxPool_).to.be.equal(rxPool)
+          x => {
+            expect(x).is.true
           },
           done,
           () => {
@@ -203,12 +192,9 @@ describe('RxPool Adapter tests', function () {
       sinon.stub(pool.pool, 'destroyAllNow').throws()
 
       Observable.merge(rxPool.take(), rxPool.take())
-        .flatMap(
-          rxClient => rxClient.query('select now()')
-            // .do(() => rxClient.release(), ::rxClient.release)
-        )
+        .mergeMap(rxClient => rxClient.query('select now()'))
         .last()
-        .flatMap(() => rxPool.end())
+        .mergeMap(() => rxPool.end())
         .subscribe(
           () => done(new Error('Should not be called')),
           err => {

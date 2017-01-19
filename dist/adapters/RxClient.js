@@ -26,9 +26,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-// todo Try all examples! and add tests to cover use cases from examples.
 /**
- * Standalone adapter for `node-postgres` {@link Client} class with Reactive API.
+ * Standalone adapter for {@link Client} class with Reactive API.
  *
  * @example <caption>Basic usage</caption>
  * import { Client } from 'pg'
@@ -84,7 +83,7 @@ var RxClient = function () {
    * @see {@link RxClient#end}
    * @see {@link RxClient#query}
    *
-   * @param {Client} client Instance of `node-postgres` Client type.
+   * @param {Client} client Instance of {@link Client}.
    *
    * @throws {RxClientError} Throws when called with invalid arguments.
    * @throws {TypeError} Throws when called as function.
@@ -110,7 +109,7 @@ var RxClient = function () {
      * @type {Observable}
      * @private
      */
-    this._errorSource = undefined;
+    this._errorSource = _rxjs.Observable.fromEvent(this._client, 'error');
     /**
      * @type {Observable}
      * @private
@@ -129,7 +128,7 @@ var RxClient = function () {
   }
 
   /**
-   * Instance of `node-postgres` {@link Client} type.
+   * Instance of {@link Client}.
    *
    * @type {Client}
    */
@@ -151,7 +150,6 @@ var RxClient = function () {
       this._connectSource = undefined;
       this._endSource = undefined;
       this._querySource = undefined;
-      this._errorSource = undefined;
     }
 
     /**
@@ -178,14 +176,8 @@ var RxClient = function () {
     value: function connect() {
       if (!this._connectSource) {
         this._connectSource = _rxjs.Observable.of(true);
-        // wrap errors with Observable to mixin it in external code
-        this._errorSource = _rxjs.Observable.fromEvent(this._client, 'error');
-
         // subscribe to the end to make RxClient cleanup
-        _rxjs.Observable.fromEvent(this._client, 'end').take(1).subscribe({
-          error: this._cleanup.bind(this),
-          complete: this._cleanup.bind(this)
-        });
+        _rxjs.Observable.fromEvent(this._client, 'end').take(1).finally(this._cleanup.bind(this)).subscribe();
 
         if (!this.connected) {
           var _context;
