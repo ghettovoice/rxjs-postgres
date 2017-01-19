@@ -49,7 +49,7 @@ describe('RxPool Adapter tests', function () {
             expect(rxClient.connected).is.true
             expect(rxClient.release).is.an('function')
 
-            rxClient.release()
+            // rxClient.release()
           },
           done,
           () => {
@@ -74,7 +74,7 @@ describe('RxPool Adapter tests', function () {
             expect(rxClient.connected).is.true
             expect(rxClient.client.release).is.an('function')
 
-            rxClient.release()
+            // rxClient.release()
           },
           done,
           () => {
@@ -95,8 +95,8 @@ describe('RxPool Adapter tests', function () {
           ([ rxClient1, rxClient2 ]) => {
             expect(rxClient1).to.not.equal(rxClient2)
 
-            rxClient1.release()
-            rxClient2.release()
+            // rxClient1.release()
+            // rxClient2.release()
           },
           done,
           () => {
@@ -146,7 +146,7 @@ describe('RxPool Adapter tests', function () {
               .do(
                 () => done(new Error('Should not be called')),
                 err => {
-                  rxClient.release(err)
+                  // rxClient.release(err)
                   expect(rxClient.client.release).has.been.calledOnce
                   expect(rxClient.client.release).has.been.calledWith(err)
                 }
@@ -176,7 +176,7 @@ describe('RxPool Adapter tests', function () {
       Observable.merge(rxPool.take(), rxPool.take())
         .flatMap(
           rxClient => rxClient.query('select now()')
-            .do(() => rxClient.release(), ::rxClient.release)
+            // .do(() => rxClient.release(), ::rxClient.release)
         )
         .last()
         .flatMap(() => rxPool.end())
@@ -205,7 +205,7 @@ describe('RxPool Adapter tests', function () {
       Observable.merge(rxPool.take(), rxPool.take())
         .flatMap(
           rxClient => rxClient.query('select now()')
-            .do(() => rxClient.release(), ::rxClient.release)
+            // .do(() => rxClient.release(), ::rxClient.release)
         )
         .last()
         .flatMap(() => rxPool.end())
@@ -276,15 +276,9 @@ describe('RxPool Adapter tests', function () {
 
     it('Should map result through projection function', function (done) {
       rxPool.query(
-        'select $1 :: int col1, $2 :: varchar col2',
-        [ 123, 'qwerty' ],
-        result => result.rows.shift()
-      ).do(row => {
-        expect(row).to.be.deep.equal({ col1: 123, col2: 'qwerty' })
-      }).concatMap(() => rxPool.query(
         'select * from generate_series(1, 3) as t(col)',
         result => result.rows
-      )).subscribe(
+      ).subscribe(
         rows => {
           expect(rows).to.be.deep.equal([
             { col: 1 },
@@ -294,7 +288,7 @@ describe('RxPool Adapter tests', function () {
         },
         done,
         () => {
-          expect(pool.pool.getPoolSize()).to.be.equal(2)
+          expect(pool.pool.getPoolSize()).to.be.equal(1)
           expect(pool.pool.inUseObjectsCount()).to.be.equal(0)
 
           pool.end(done)

@@ -66,10 +66,13 @@ var RxPool = function () {
      * @see {@link RxPool#end}
      * @see {@link RxClient}
      *
+     * @param {boolean} [autoRelease=true]
      * @return {Observable<RxClient>} Returns single element {@link Observable} sequence
      *    of the connected {@link RxClient}
      */
     value: function connect() {
+      var autoRelease = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
       return _rxjs.Observable.fromPromise(this._pool.connect()).flatMap(function (client) {
         var rxClient = new _RxClient2.default(client);
 
@@ -80,7 +83,11 @@ var RxPool = function () {
           client.release(err);
         };
 
-        return rxClient.connect().mapTo(rxClient);
+        var clientSource = rxClient.connect().mapTo(rxClient);
+
+        if (autoRelease) clientSource = clientSource.do(undefined, rxClient.release.bind(rxClient), rxClient.release.bind(rxClient));
+
+        return clientSource;
       }).do(function () {
         return util.log('RxPool: client connected');
       });
@@ -138,8 +145,10 @@ var RxPool = function () {
     key: 'query',
     value: function query(queryText, values, projectFunction) {
       return this.connect().mergeMap(function (client) {
-        return client.query(queryText, values, projectFunction).do(undefined, client.release.bind(client), client.release.bind(client));
-      });
+        return client.query(queryText, values, projectFunction);
+      }
+      // .do(undefined, ::client.release, ::client.release)
+      );
     }
 
     /**

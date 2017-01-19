@@ -38,10 +38,11 @@ export default class RxPool {
    * @see {@link RxPool#end}
    * @see {@link RxClient}
    *
+   * @param {boolean} [autoRelease=true]
    * @return {Observable<RxClient>} Returns single element {@link Observable} sequence
    *    of the connected {@link RxClient}
    */
-  connect () {
+  connect (autoRelease = true) {
     return Observable.fromPromise(this._pool.connect())
       .flatMap(client => {
         const rxClient = new RxClient(client)
@@ -53,7 +54,11 @@ export default class RxPool {
           client.release(err)
         }
 
-        return rxClient.connect().mapTo(rxClient)
+        let clientSource = rxClient.connect().mapTo(rxClient)
+
+        if (autoRelease) clientSource = clientSource.do(undefined, ::rxClient.release, ::rxClient.release)
+
+        return clientSource
       })
       .do(() => util.log('RxPool: client connected'))
   }
@@ -99,7 +104,7 @@ export default class RxPool {
     return this.connect()
       .mergeMap(
         client => client.query(queryText, values, projectFunction)
-          .do(undefined, ::client.release, ::client.release)
+          // .do(undefined, ::client.release, ::client.release)
       )
   }
 
