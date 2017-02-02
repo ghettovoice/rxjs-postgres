@@ -89,7 +89,7 @@ var RxPool = function () {
     value: function connect() {
       var autoRelease = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
 
-      return _rxjs.Observable.fromPromise(this._pool.connect()).flatMap(function (client) {
+      return _rxjs.Observable.from(this._pool.connect()).flatMap(function (client) {
         var rxClient = new _RxClient2.default(client);
 
         rxClient.release = function (err) {
@@ -131,7 +131,7 @@ var RxPool = function () {
     value: function end() {
       var _this = this;
 
-      return _rxjs.Observable.fromPromise(this._pool.end()).mapTo(true).finally(function () {
+      return _rxjs.Observable.from(this._pool.end()).mapTo(true).finally(function () {
         _this._txClientSource = undefined;
       }).do(function () {
         return util.log('RxPool: pool ended');

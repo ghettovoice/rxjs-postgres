@@ -70,7 +70,7 @@ export default class RxPool {
    *    of the connected {@link RxClient}
    */
   connect (autoRelease = true) {
-    return Observable.fromPromise(this._pool.connect())
+    return Observable.from(this._pool.connect())
       .flatMap(client => {
         const rxClient = new RxClient(client)
 
@@ -104,7 +104,7 @@ export default class RxPool {
    * @return {Observable<boolean>}
    */
   end () {
-    return Observable.fromPromise(this._pool.end())
+    return Observable.from(this._pool.end())
       .mapTo(true)
       .finally(() => {
         this._txClientSource = undefined
