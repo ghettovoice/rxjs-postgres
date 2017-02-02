@@ -323,7 +323,7 @@ var RxPool = function () {
     }
 
     /**
-     * Errors hot observable. Use it to subscribe to the client error events.
+     * Errors hot observable. Use it to subscribe to the pool errors.
      *
      * @see {@link Client}
      *

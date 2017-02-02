@@ -315,8 +315,8 @@ export default class RxClient {
           util.log('RxClient: query executed', [ queryText, this._txLevel ])
           this._commitTxLevel()
         },
-        () => {
-          util.err('RxClient: query executed', [ queryText, this._txLevel ])
+        err => {
+          util.err(`RxClient: query failed`, [ queryText, this._txLevel, err.stack ])
           this._rollbackTxLevel()
           this._querySource = undefined
         }
