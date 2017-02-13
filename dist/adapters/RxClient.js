@@ -66,7 +66,7 @@ var RxClient = function () {
    * // load some record
    * rxClient.queryRow('select * from main where id = $1', [ 1 ])
    *   // then load some additional related records
-   *   .flatMap(
+   *   .mergeMap(
    *     mainRow => rxClient.queryRows(
    *       'select * from child where main_id = $1',
    *       [ mainRow.id ]
@@ -105,26 +105,6 @@ var RxClient = function () {
      * @private
      */
     this._txLevel = this._savedTxLevel = 0;
-    /**
-     * @type {Observable}
-     * @private
-     */
-    this._errorSource = _rxjs.Observable.fromEvent(this._client, 'error');
-    /**
-     * @type {Observable}
-     * @private
-     */
-    this._connectSource = undefined;
-    /**
-     * @type {Observable}
-     * @private
-     */
-    this._endSource = undefined;
-    /**
-     * @type {Observable}
-     * @private
-     */
-    this._querySource = undefined;
   }
 
   /**
@@ -147,9 +127,6 @@ var RxClient = function () {
       util.log('RxClient: cleanup');
 
       this._txLevel = this._savedTxLevel = 0;
-      this._connectSource = undefined;
-      this._endSource = undefined;
-      this._querySource = undefined;
     }
 
     /**
@@ -167,32 +144,30 @@ var RxClient = function () {
      *
      * @see {@link RxClient#end}
      *
-     * @return {Observable<boolean>} Returns single boolean {@link Observable} sequence
-     *    multicasted with {@link ReplaySubject}
+     * @return {Observable<boolean>} Returns single element {@link Observable} sequence.
      */
 
   }, {
     key: 'connect',
     value: function connect() {
-      if (!this._connectSource) {
-        this._connectSource = _rxjs.Observable.of(true);
+      var source = _rxjs.Observable.of(true);
+
+      if (!this.connected) {
+        var _context;
+
         // subscribe to the end to make RxClient cleanup
+        // noinspection JSUnresolvedFunction
         _rxjs.Observable.fromEvent(this._client, 'end').take(1).finally(this._cleanup.bind(this)).subscribe();
 
-        if (!this.connected) {
-          var _context;
-
-          var connect = _rxjs.Observable.bindNodeCallback((_context = this._client).connect.bind(_context), function () {
-            return true;
-          });
-
-          this._connectSource = connect().do(function () {
-            return util.log('RxClient: client connected');
-          }).publishReplay().refCount();
-        }
+        var connect = _rxjs.Observable.bindNodeCallback((_context = this._client).connect.bind(_context), function () {
+          return true;
+        });
+        source = connect().do(function () {
+          return util.log('RxClient: client connected');
+        });
       }
 
-      return this._connectSource;
+      return source;
     }
 
     /**
@@ -200,8 +175,7 @@ var RxClient = function () {
      *
      * @see {@link RxClient#connect}
      *
-     * @return {Observable<boolean>} Returns single boolean {@link Observable} sequence
-     *    multicasted with {@link ReplaySubject}
+     * @return {Observable<boolean>} Returns single element {@link Observable} sequence.
      */
 
   }, {
@@ -217,7 +191,7 @@ var RxClient = function () {
      *
      * @example <caption>Close database connection</caption>
      * rxClient.connect()
-     *   .concat(rxClient.end())
+     *   .concatMap(() => rxClient.end())
      *   .subscribe(
      *     x => console.log('NEXT', 'Connection closed'),
      *     err => console.error('ERROR', err.message),
@@ -226,36 +200,26 @@ var RxClient = function () {
      *
      * @see {@link RxClient#connect}
      *
-     * @return {Observable<boolean>} Returns single boolean {@link Observable} sequence
-     *    multicasted with {@link ReplaySubject}
+     * @return {Observable<boolean>} Returns single element {@link Observable} sequence.
      */
 
   }, {
     key: 'end',
     value: function end() {
-      var _this = this;
+      var source = _rxjs.Observable.of(true);
 
-      if (!this._endSource) {
-        this._endSource = _rxjs.Observable.of(true);
+      if (this.connected) {
+        var _context2;
 
-        if (this._connectSource) {
-          (function () {
-            var _context2;
-
-            var end = _rxjs.Observable.bindNodeCallback((_context2 = _this._client).end.bind(_context2), function () {
-              return true;
-            });
-
-            _this._endSource = _this._connectSource.concatMap(function () {
-              return end();
-            }).do(function () {
-              return util.log('RxClient: client ended');
-            }).publishReplay().refCount();
-          })();
-        }
+        var end = _rxjs.Observable.bindNodeCallback((_context2 = this._client).end.bind(_context2), function () {
+          return true;
+        });
+        source = end().do(function () {
+          return util.log('RxClient: client ended');
+        });
       }
 
-      return this._endSource;
+      return source;
     }
 
     /**
@@ -264,7 +228,6 @@ var RxClient = function () {
      * @see {@link RxClient#end}
      *
      * @return {Observable<boolean>} Returns single boolean {@link Observable} sequence
-     *    multicasted with {@link ReplaySubject}
      */
 
   }, {
@@ -276,31 +239,23 @@ var RxClient = function () {
     /**
      * Executes SQL query with arguments and returns {@link Observable} sequence of the query {@link Result} object.
      * You can pass result projection function as second or third argument to map {@link Result} object to
-     * another value that will be emitted by the result {@link Observable}.
+     * another value that will be emitted by the outer {@link Observable}.
      * If client not yet connected then {@link RxClient#connect} will be called before query execution.
      *
      * @example <caption>Simple query with arguments</caption>
-     * rxClient.query('select * from main where id = $1', [ 1 ] )
+     * rxClient.query('select * from main where id = $1', [ 1 ])
      *   .subscribe(
      *     result => console.log('NEXT', result),
      *     err => console.error('ERROR', err.message),
      *     () => console.log('COMPLETE')
      *   )
-     * @example <caption>Map result to the first row</caption>
+     * @example <caption>Query with arguments and result projection function</caption>
      * rxClient.query(
-     *   'select * from main',
+     *   'select * from main where id = $1',
+     *   [ 123 ],
      *   result => result.rows.slice().shift()
      * ).subscribe(
      *   firstRow => console.log('NEXT', firstRow),
-     *   err => console.error('ERROR', err.message),
-     *   () => console.log('COMPLETE', 'Query executed')
-     * )
-     * @example <caption>Flatten array of rows</caption>
-     * rxClient.query(
-     *   'select * from main',
-     *   result => Observable.from(result.rows.slice())
-     * ).subscribe(
-     *   row => console.log('NEXT', row),
      *   err => console.error('ERROR', err.message),
      *   () => console.log('COMPLETE', 'Query executed')
      * )
@@ -314,35 +269,33 @@ var RxClient = function () {
      * @param {function(x: Result): *} [projectFunction] A function which takes the query {@link Result}
      *      and maps it ta the another value or inner {@link Observable}.
      *
-     * @return {Observable} Returns {@link Observable} sequence of query {@link Result} or
+     * @return {Observable<T>} Returns {@link Observable} sequence of query {@link Result} or
      *      whatever returned by the `projectFunction`.
      */
 
   }, {
     key: 'query',
     value: function query(queryText, values, projectFunction) {
-      var _this2 = this;
+      var _this = this;
 
       if (typeof values === 'function') {
         projectFunction = values;
       }
 
-      this._querySource = (this._querySource || this.connect()).concatMap(function () {
+      var source = this.connect().concatMap(function () {
         var _context3;
 
-        var query = _rxjs.Observable.bindNodeCallback((_context3 = _this2._client).query.bind(_context3));
+        var query = _rxjs.Observable.bindNodeCallback((_context3 = _this._client).query.bind(_context3));
 
         return query(queryText, values);
       }).do(function () {
-        util.log('RxClient: query executed', [queryText, _this2._txLevel]);
-        _this2._commitTxLevel();
+        util.log('RxClient: query executed', [queryText, _this._txLevel]);
+        _this._commitTxLevel();
       }, function (err) {
-        util.err('RxClient: query failed', [queryText, _this2._txLevel, err.stack]);
-        _this2._rollbackTxLevel();
-        _this2._querySource = undefined;
-      }).publishReplay().refCount();
+        util.err('RxClient: query failed', [queryText, _this._txLevel, err.stack]);
+        _this._rollbackTxLevel();
+      });
 
-      var source = this._querySource;
       if (projectFunction) {
         source = source.map(function (result) {
           var projectedValue = projectFunction(result);
@@ -426,21 +379,20 @@ var RxClient = function () {
      * // RxClient#txLevel = 0
      * // begin new transaction
      * rxClient.begin() // RxClient#txLevel = 1
-     *   .concat(rxClient.queryRow(
+     *   .mergeMap(() => rxClient.queryRow(
      *     'insert into main (name) values ($1) returning *',
      *     [ 'qwerty' ]
      *   ))
      *   // work with inserted record
      *   .mergeMap(
-     *     insertedRow => Observable.concat(
-     *       rxClient.begin(), // RxClient#txLevel = 2
+     *     insertedRow => rxClient.begin() // RxClient#txLevel = 2
      *       // try to execute invalid query
-     *       rxClient.queryRow(
+     *       .mergeMap(() => rxClient.queryRow(
      *         'update main set (id, name) = ($1, $2) where id = $3 returning *',
      *         [ 1, 'qwerty new name', insertedRow.id ]
-     *       ),
-     *       rxClient.commit() // RxClient#txLevel = 1
-     *     ).catch(() => rxClient.rollback(insertedRow)) // rollback to the last savepoint if query failed
+     *       ))
+     *       .mergeMap(updatedRow => rxClient.commit(updatedRow)) // RxClient#txLevel = 1
+     *       .catch(() => rxClient.rollback(insertedRow))  // rollback to the last savepoint if query failed
      *   )
      *   // commit the top level transaction
      *   .mergeMap(row => rxClient.commit(row, true)) // RxClient#txLevel = 0
@@ -457,7 +409,7 @@ var RxClient = function () {
      *
      * @param {*} [mapTo] If defined will be emitted by the returned {@link Observable}
      *
-     * @return {Observable} Returns empty {@link Observable} sequence that completes
+     * @return {Observable} Returns single element {@link Observable} sequence that completes
      *      when transaction successfully opened or {@link Observable} sequence of
      *      whatever passed as `mapTo` argument.
      *
@@ -466,34 +418,29 @@ var RxClient = function () {
 
   }, {
     key: 'begin',
-    value: function begin(mapTo) {
-      var _this3 = this;
+    value: function begin() {
+      var _this2 = this;
+
+      var mapTo = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
 
       (0, _assert2.default)(this._txLevel >= 0, 'Current transaction level >= 0');
 
       var begin = function begin() {
-        _this3._commitTxLevel();
+        _this2._commitTxLevel();
 
         var query = void 0;
-        if (_this3._txLevel === 0) {
+        if (_this2._txLevel === 0) {
           query = 'begin';
         } else {
-          query = 'savepoint point_' + _this3._txLevel;
+          query = 'savepoint point_' + _this2._txLevel;
         }
 
-        ++_this3._txLevel;
+        ++_this2._txLevel;
 
-        return _this3.query(query);
+        return _this2.query(query);
       };
 
-      var source = begin();
-      if (mapTo != null) {
-        source = source.mapTo(mapTo);
-      } else {
-        source = source.ignoreElements();
-      }
-
-      return source;
+      return begin().mapTo(mapTo);
     }
 
     /**
@@ -506,21 +453,20 @@ var RxClient = function () {
      * // RxClient#txLevel = 0
      * // begin new transaction
      * rxClient.begin() // RxClient#txLevel = 1
-     *   .concat(rxClient.queryRow(
+     *   .mergeMap(() => rxClient.queryRow(
      *     'insert into main (name) values ($1) returning *',
      *     [ 'qwerty' ]
      *   ))
      *   // work with inserted record
      *   .mergeMap(
-     *     insertedRow => Observable.concat(
-     *       rxClient.begin(), // RxClient#txLevel = 2
+     *     insertedRow => rxClient.begin() // RxClient#txLevel = 2
      *       // try to execute invalid query
-     *       rxClient.queryRow(
+     *       .mergeMap(() => rxClient.queryRow(
      *         'update main set (id, name) = ($1, $2) where id = $3 returning *',
      *         [ 1, 'qwerty new name', insertedRow.id ]
-     *       ),
-     *       rxClient.commit() // RxClient#txLevel = 1
-     *     ).catch(() => rxClient.rollback(insertedRow)) // rollback to the last savepoint if query failed
+     *       ))
+     *       .mergeMap(updatedRow => rxClient.commit(updatedRow)) // RxClient#txLevel = 1
+     *       .catch(() => rxClient.rollback(insertedRow))  // rollback to the last savepoint if query failed
      *   )
      *   // commit the top level transaction
      *   .mergeMap(row => rxClient.commit(row, true)) // RxClient#txLevel = 0
@@ -538,7 +484,7 @@ var RxClient = function () {
      * @param {*} [mapTo] If defined will be emitted by the returned {@link Observable}
      * @param {boolean} [force] If `true` commits transaction with all savepoints.
      *
-     * @return {Observable} Returns empty {@link Observable} sequence that completes
+     * @return {Observable} Returns single element {@link Observable} sequence that completes
      *      when transaction successfully committed or {@link Observable} sequence of
      *      whatever passed as `mapTo` argument.
      *
@@ -549,37 +495,33 @@ var RxClient = function () {
 
   }, {
     key: 'commit',
-    value: function commit(mapTo, force) {
-      var _this4 = this;
+    value: function commit() {
+      var _this3 = this;
+
+      var mapTo = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+      var force = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
 
       (0, _assert2.default)(this._txLevel >= 0, 'Current transaction level >= 0');
 
       var commit = function commit() {
-        if (_this4._txLevel === 0) {
+        if (_this3._txLevel === 0) {
           throw new _errors.RxClientError('The transaction is not opened on the client');
         }
 
-        _this4._commitTxLevel();
+        _this3._commitTxLevel();
 
         var query = void 0;
-        if (_this4._txLevel === 1 || force) {
+        if (_this3._txLevel === 1 || force) {
           query = 'commit';
-          _this4._txLevel = 0;
+          _this3._txLevel = 0;
         } else {
-          query = 'release savepoint point_' + --_this4._txLevel;
+          query = 'release savepoint point_' + --_this3._txLevel;
         }
 
-        return _this4.query(query);
+        return _this3.query(query);
       };
 
-      var source = commit();
-      if (mapTo != null) {
-        source = source.mapTo(mapTo);
-      } else {
-        source = source.ignoreElements();
-      }
-
-      return source;
+      return commit().mapTo(mapTo);
     }
 
     /**
@@ -592,21 +534,20 @@ var RxClient = function () {
      * // RxClient#txLevel = 0
      * // begin new transaction
      * rxClient.begin() // RxClient#txLevel = 1
-     *   .concat(rxClient.queryRow(
+     *   .mergeMap(() => rxClient.queryRow(
      *     'insert into main (name) values ($1) returning *',
      *     [ 'qwerty' ]
      *   ))
      *   // work with inserted record
      *   .mergeMap(
-     *     insertedRow => Observable.concat(
-     *       rxClient.begin(), // RxClient#txLevel = 2
+     *     insertedRow => rxClient.begin() // RxClient#txLevel = 2
      *       // try to execute invalid query
-     *       rxClient.queryRow(
+     *       .mergeMap(() => rxClient.queryRow(
      *         'update main set (id, name) = ($1, $2) where id = $3 returning *',
      *         [ 1, 'qwerty new name', insertedRow.id ]
-     *       ),
-     *       rxClient.commit() // RxClient#txLevel = 1
-     *     ).catch(() => rxClient.rollback(insertedRow)) // rollback to the last savepoint if query failed
+     *       ))
+     *       .mergeMap(updatedRow => rxClient.commit(updatedRow)) // RxClient#txLevel = 1
+     *       .catch(() => rxClient.rollback(insertedRow))  // rollback to the last savepoint if query failed
      *   )
      *   // commit the top level transaction
      *   .mergeMap(row => rxClient.commit(row, true)) // RxClient#txLevel = 0
@@ -624,7 +565,7 @@ var RxClient = function () {
      * @param {*} [mapTo] If defined will be emitted by the returned {@link Observable}
      * @param {boolean} [force] If `true` rolls back transaction with all savepoints.
      *
-     * @return {Observable} Returns empty {@link Observable} sequence that completes
+     * @return {Observable} Returns single element {@link Observable} sequence that completes
      *      when transaction successfully rolled back or {@link Observable} sequence of
      *      whatever passed as `mapTo` argument.
      *
@@ -635,37 +576,56 @@ var RxClient = function () {
 
   }, {
     key: 'rollback',
-    value: function rollback(mapTo, force) {
-      var _this5 = this;
+    value: function rollback() {
+      var _this4 = this;
+
+      var mapTo = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+      var force = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
 
       (0, _assert2.default)(this._txLevel >= 0, 'Current transaction level >= 0');
 
       var rollback = function rollback() {
-        if (_this5._txLevel === 0) {
+        if (_this4._txLevel === 0) {
           throw new _errors.RxClientError('The transaction is not opened on the client');
         }
 
-        _this5._commitTxLevel();
+        _this4._commitTxLevel();
 
         var query = void 0;
-        if (_this5._txLevel === 1 || force) {
+        if (_this4._txLevel === 1 || force) {
           query = 'rollback';
-          _this5._txLevel = 0;
+          _this4._txLevel = 0;
         } else {
-          query = 'rollback to savepoint point_' + --_this5._txLevel;
+          query = 'rollback to savepoint point_' + --_this4._txLevel;
         }
 
-        return _this5.query(query);
+        return _this4.query(query);
       };
 
-      var source = rollback();
-      if (mapTo != null) {
-        source = source.mapTo(mapTo);
-      } else {
-        source = source.ignoreElements();
-      }
+      return rollback().mapTo(mapTo);
+    }
 
-      return source;
+    /**
+     * @param {function(): Observable} func
+     * @return {Observable<T>}
+     */
+
+  }, {
+    key: 'tx',
+    value: function tx(func) {
+      var _this5 = this;
+
+      return this.begin().concatMap(function () {
+        return func();
+      }).concatMap(function (result) {
+        return _this5.commit(result);
+      }).catch(function (err) {
+        util.err(err.message, [err.stack]);
+
+        return _this5.rollback().mergeMap(function () {
+          return _rxjs.Observable.throw(err);
+        });
+      });
     }
 
     /**
@@ -715,20 +675,6 @@ var RxClient = function () {
     key: 'connected',
     get: function get() {
       return this._client.connection.stream.readyState === 'open';
-    }
-
-    /**
-     * Errors hot observable. Use it to subscribe to the client error events.
-     *
-     * @see {@link Client}
-     *
-     * @type {Observable<Error>}
-     */
-
-  }, {
-    key: 'errors',
-    get: function get() {
-      return this._errorSource;
     }
   }]);
 
