@@ -11,6 +11,8 @@
 [![License](https://img.shields.io/github/license/ghettovoice/rxjs-postgres.svg)](https://github.com/ghettovoice/rxjs-postgres/blob/master/LICENSE)
 [![Dependencies](https://img.shields.io/david/ghettovoice/rxjs-postgres.svg)](https://david-dm.org/ghettovoice/rxjs-postgres)
 
+# NOT READY FOR PRODUCTION
+
 ## System requirements
 
 * PostgreSQL ver. >= 9.1
